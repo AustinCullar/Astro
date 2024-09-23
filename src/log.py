@@ -14,6 +14,8 @@ class Logger:
 		self.logger = self.initialize_logging()
 
 	def get_log_level(self, log_level: str) -> int:
+		log_level = log_level.upper()
+
 		if log_level == "DEBUG":
 			log_level = logging.DEBUG
 		elif log_level == "INFO":
