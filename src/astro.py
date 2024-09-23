@@ -54,9 +54,6 @@ def main():
 	logger = Logger(log_level)
 	log = logger.get_logger()
 
-	# runescape video (needed low comment example)
-	#video_id="4M-FeqYmwdg"
-
 	# pull comments from specified youtube video
 	youtube = YouTubeDataAPI(logger, api_key)
 	comments_df = youtube.get_comments(video_id)
