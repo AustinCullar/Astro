@@ -10,12 +10,14 @@ from dotenv import load_dotenv
 from yt_data_api import YouTubeDataAPI
 from sentiment import SentimentAnalysis
 from log import Logger
+from astro_db import AstroDB
 
 def main():
 	# load environment variables
 	load_dotenv()
 	api_key = os.getenv("API_KEY")
 	log_level = os.getenv("LOG_LEVEL")
+	db_file = os.getenv("DB_FILE")
 
 	# set up logging
 	logger = Logger(log_level)
@@ -39,11 +41,12 @@ def main():
 			comments_df.loc[index, 'PSentiment'] = sentiment[0]
 			comments_df.loc[index, 'NSentiment'] = sentiment[1]
 		
-	log.debug('Collected data preview: \n{}'.format(comments_df))
+	# Database logic
+	db = AstroDB(logger, db_file)
+	db.create_database()
+	db.insert_comment_dataframe(video_id, comments_df)
 
-	# save comment data to csv file for now
-	# TODO move data into a database
-	comments_df.to_csv(f'{video_id}.csv')
+	log.debug('Collected data preview: \n{}'.format(comments_df))
 
 if __name__ == "__main__":
 	main()
