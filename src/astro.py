@@ -8,8 +8,8 @@ import argparse
 import pandas as pd
 
 from dotenv import load_dotenv
-from yt_data_api import YouTubeDataAPI
-from sentiment import SentimentAnalysis
+from data_collection.yt_data_api import YouTubeDataAPI
+from data_collection.sentiment import SentimentAnalysis
 from log import Logger
 from astro_db import AstroDB
 
