@@ -2,8 +2,6 @@
 This file contains functionality for logging.
 """
 import logging
-import os
-from dotenv import load_dotenv
 
 
 class Logger:

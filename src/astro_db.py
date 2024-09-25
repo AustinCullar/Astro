@@ -4,13 +4,10 @@ Program to build a database of youtube comments.
 Usage: TBD
 """
 import sqlite3
-import os
 import string
 import random
 
 import pandas as pd
-
-from dotenv import load_dotenv
 
 
 class AstroDB:
@@ -147,7 +144,7 @@ def main():
 
     db.create_database()
 
-    db.insert_comment('4M-FeqYmwdg', 'acullar', 'hello there', '4.22.2017') 
+    db.insert_comment('4M-FeqYmwdg', 'acullar', 'hello there', '4.22.2017')
 
 if __name__ == "__main__":
     main()

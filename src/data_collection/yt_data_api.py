@@ -6,10 +6,6 @@ import pandas as pd
 import traceback
 
 from googleapiclient.discovery import build
-from time import sleep
-
-# for debugging purposes
-import json
 
 
 class YouTubeDataAPI:
