@@ -65,7 +65,6 @@ class YouTubeDataAPI:
 			videoId=video_id,
 			textFormat="plainText")
 
-		print('type of request: {}'.format(type(request)))
 		comment_dataframe = None
 
 		while request:
