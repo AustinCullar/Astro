@@ -20,6 +20,7 @@ class SentimentAnalysis:
 
 		positive_sentiment = 0.0
 		negative_sentiment = 0.0
+		objectivity = 1.0
 
 		for word_tag in pos_tag_comment:
 			word = word_tag[0]
@@ -50,6 +51,8 @@ class SentimentAnalysis:
 			objectivity = 1 - (positive_sentiment + negative_sentiment)
 
 			return (positive_sentiment, negative_sentiment, objectivity)
+
+		return (positive_sentiment, negative_sentiment, objectivity)
 
 	def get_sentiment_multiple(self, comments: list) -> list:
 		comments_with_sentiment = []
