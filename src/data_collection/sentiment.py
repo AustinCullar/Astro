@@ -12,13 +12,33 @@ from nltk.corpus import sentiwordnet as swn
 
 
 class SentimentAnalysis:
+    logger = None
 
     def __init__(self, logger):
-
         self.logger = logger.get_logger()
+        self.nltk_init()
+
+    def nltk_init(self):
+        required_nltk_packages = [
+                'punkt_tab',
+                'averaged_perceptron_tagger_eng',
+                'wordnet',
+                'sentiwordnet']
+
+        for pkg in required_nltk_packages:
+            nltk.download(pkg, quiet=True, raise_on_error=True)
+
+    def add_sentiment_to_dataframe(self, df):
+        if not df.empty:
+            df['PSentiment'] = ''
+            df['NSentiment'] = ''
+
+            for index, row in df.iterrows():
+                sentiment = self.get_sentiment(row['comment'])
+                df.loc[index, 'PSentiment'] = sentiment[0]
+                df.loc[index, 'NSentiment'] = sentiment[1]
 
     def get_sentiment(self, comment: str) -> ():
-
         token_comment = nltk.word_tokenize(comment)
         pos_tag_comment = nltk.pos_tag(token_comment)
 
@@ -57,17 +77,3 @@ class SentimentAnalysis:
             return (positive_sentiment, negative_sentiment, objectivity)
 
         return (positive_sentiment, negative_sentiment, objectivity)
-
-    def get_sentiment_multiple(self, comments: list) -> list:
-
-        comments_with_sentiment = []
-
-        for comment in comments:
-            # comment_sentiment: (user, comment, timestamp)
-            comment_sentiment = self.get_sentiment(comment[1])
-
-            comment_with_sentiment = comment + comment_sentiment
-
-            comments_with_sentiment.append(comment_with_sentiment)
-
-        return comments_with_sentiment
