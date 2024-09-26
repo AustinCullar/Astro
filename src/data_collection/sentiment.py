@@ -66,16 +66,3 @@ class SentimentAnalysis:
             return (positive_sentiment, negative_sentiment, objectivity)
 
         return (positive_sentiment, negative_sentiment, objectivity)
-
-    def get_sentiment_multiple(self, comments: list) -> list:
-        comments_with_sentiment = []
-
-        for comment in comments:
-            # comment_sentiment: (user, comment, timestamp)
-            comment_sentiment = self.get_sentiment(comment[1])
-
-            comment_with_sentiment = comment + comment_sentiment
-
-            comments_with_sentiment.append(comment_with_sentiment)
-
-        return comments_with_sentiment
