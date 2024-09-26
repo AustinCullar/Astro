@@ -1,3 +1,10 @@
+"""
+This file contains example YouTube Data API responses for use
+in testing.
+"""
+
+
+test_comment_api_response = """
 {
     "kind": "youtube#commentThreadListResponse",
     "etag": "Leymzj7IilCkKdGveEdfycOes08",
@@ -69,3 +76,6 @@
         }
     ]
 }
+"""
+
+test_empty_api_response = "{}"
