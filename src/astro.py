@@ -60,18 +60,10 @@ def main():
     youtube = YouTubeDataAPI(logger, api_key)
     comments_df = youtube.get_comments(video_id)
 
-    if not comments_df.empty:
-        comments_df['PSentiment'] = ''
-        comments_df['NSentiment'] = ''
+    sa = SentimentAnalysis(logger)
+    sa.add_sentiment_to_dataframe(comments_df)
 
-        sa = SentimentAnalysis(logger)
-
-        for index, row in comments_df.iterrows():
-            sentiment = sa.get_sentiment(row['comment'])
-            comments_df.loc[index, 'PSentiment'] = sentiment[0]
-            comments_df.loc[index, 'NSentiment'] = sentiment[1]
-
-    # Database logic
+    # Commit dataframe to database
     db = AstroDB(logger, db_file)
     db.create_database()
     db.insert_comment_dataframe(video_id, comments_df)
