@@ -6,6 +6,8 @@ import pandas as pd
 from unittest.mock import MagicMock
 from src.log import Logger
 
+import src.tests.test_api_responses as test_responses
+
 
 @pytest.fixture(scope='class')
 def comment_dataframe():
@@ -20,12 +22,7 @@ def comment_dataframe():
 
 @pytest.fixture(scope='class')
 def api_comment_response():
-    response = {}
-
-    with open('test_comment_api_response.json', 'r') as f:
-        response = json.load(f)
-
-    return response
+    return json.loads(test_responses.test_comment_api_response)
 
 
 @pytest.fixture(scope='class')
