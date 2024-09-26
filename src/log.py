@@ -11,16 +11,16 @@ class Logger:
         self.logger = self.initialize_logging()
 
     def get_log_level(self, log_level: str) -> int:
-        log_level = log_level.upper()
-
-        if log_level == "DEBUG":
+        if log_level == "debug":
             log_level = logging.DEBUG
-        elif log_level == "INFO":
+        elif log_level == "info":
             log_level = logging.INFO
-        elif log_level == "WARNING":
+        elif log_level == "warn":
             log_level = logging.WARNING
-        else:
+        elif log_level == 'error':
             log_level = logging.ERROR
+        else:
+            raise ValueError("Invalid logger level specified: {}".format(log_level))
 
         return log_level
 
