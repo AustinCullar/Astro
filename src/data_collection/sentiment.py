@@ -19,10 +19,14 @@ class SentimentAnalysis:
         self.nltk_init()
 
     def nltk_init(self):
-        nltk.download('punkt_tab')
-        nltk.download('averaged_perceptron_tagger_eng')
-        nltk.download('wordnet')
-        nltk.download('sentiwordnet')
+        required_nltk_packages = [
+                'punkt_tab',
+                'averaged_perceptron_tagger_eng',
+                'wordnet',
+                'sentiwordnet']
+
+        for pkg in required_nltk_packages:
+            nltk.download(pkg, quiet=True, raise_on_error=True)
 
     def add_sentiment_to_dataframe(self, df):
         if not df.empty:
