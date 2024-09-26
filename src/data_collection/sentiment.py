@@ -16,6 +16,10 @@ class SentimentAnalysis:
 
     def __init__(self, logger):
         self.logger = logger.get_logger()
+        self.nltk_init()
+
+    def nltk_init(self):
+        nltk.download('punkt_tab')
 
     def add_sentiment_to_dataframe(self, df):
         if not df.empty:
