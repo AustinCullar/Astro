@@ -1,7 +1,5 @@
 """
-Program to build a database of youtube comments.
-
-Usage: TBD
+Class for managing comment/video database.
 """
 import sqlite3
 import string
@@ -19,6 +17,10 @@ class AstroDB:
         self.conn = sqlite3.connect(db_file)
         self.cursor = self.conn.cursor()
         self.logger = logger.get_logger()
+        self.create_videos_table()
+
+    def get_db_conn(self):
+        return self.conn
 
     def comment_table_exists(self, table_name: str) -> bool:
         """
@@ -36,19 +38,22 @@ class AstroDB:
         """
         Create a random table name from uppercase letters.
         """
+        attempts = 3  # 3 attempts to generate unique string
+        id_string = ''
 
         # Generate random names until we get one that doesn't exist
-        while True:
+        while attempts > 0:
             id_string = ''.join(random.choices(string.ascii_uppercase, k=12))
 
-            if not self.comment_table_exists(id_string):
-                break
+            if self.comment_table_exists(id_string):
+                self.logger.warning('Comment table name collision!')
+                attempts -= 1
             else:
-                self.logger.warn('Comment table name collision!')
+                return id_string
 
-        return id_string
+        return ''
 
-    def create_database(self):
+    def create_videos_table(self):
         """
         Create the main table, 'Videos', which will track every video on which
         data is collected. It will also point to a seperate table in which comment
@@ -68,6 +73,7 @@ class AstroDB:
         """
         author = 'TDOO'
         table_name = self.create_unique_table_name()
+        assert table_name, "Failed to create unique comment table in database"
 
         self.cursor.execute("INSERT INTO Videos (author, video_id, comment_table) \
             VALUES ('{}', '{}', '{}')".format(author, video_id, table_name))
@@ -97,30 +103,9 @@ class AstroDB:
 
         table = self.cursor.fetchone()
         if table:
-            table = table[0]
-
-        return table
-
-    def insert_comment(self, video_id: str, user: str, comment: str, date: str):
-        """
-        Given a video ID along with basic comment data, commit the data to the
-        appropriate comment table.
-        """
-        comment_table = self.get_comment_table_for(video_id)
-
-        if comment_table:
-            self.logger.debug('Video table for {} already existed'.format(video_id))
-            self.cursor.execute("SELECT comment_table FROM Videos WHERE video_id='{}'".format(video_id))
-            comment_table = self.cursor.fetchone()[0]
+            return table[0]
         else:
-            self.logger.debug('Video table for {} did not exist'.format(video_id))
-            comment_table = self.create_comment_table_for_video(video_id)
-
-        # insert comment info into DB
-        self.cursor.execute("INSERT INTO '{}' (user, comment, date) \
-            VALUES ('{}', '{}', '{}')".format(comment_table, user, comment, date))
-
-        self.conn.commit()
+            return ''
 
     def insert_comment_dataframe(self, video_id: str, dataframe: pd.DataFrame):
         """
@@ -133,19 +118,4 @@ class AstroDB:
 
         # eventually we should use 'append' here
         dataframe.to_sql(comment_table, self.conn, if_exists='replace')
-
-
-"""
-This code is used for debugging and will likely be removed once proper unit testing is added.
-
-def main():
-    load_dotenv()
-    db = AstroDB(os.getenv("DB_FILE"))
-
-    db.create_database()
-
-    db.insert_comment('4M-FeqYmwdg', 'acullar', 'hello there', '4.22.2017')
-
-if __name__ == "__main__":
-    main()
-"""
+        self.conn.commit()

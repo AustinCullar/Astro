@@ -65,7 +65,6 @@ def main():
 
     # Commit dataframe to database
     db = AstroDB(logger, db_file)
-    db.create_database()
     db.insert_comment_dataframe(video_id, comments_df)
 
     log.debug('Collected data preview: \n{}'.format(comments_df))
