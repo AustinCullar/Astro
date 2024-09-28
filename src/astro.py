@@ -33,7 +33,8 @@ def parse_args():
     parser.add_argument("youtube_url", type=str, help="URL to youtube video")
     parser.add_argument("-l", "--log", type=str, choices=['debug', 'info', 'warn', 'error'],
                         help='Set the logging level')
-
+    parser.add_argument("--api-key", type=str, help="YouTube Data API key")
+    parser.add_argument("--db-file", type=str, help="Database filename")
     args = parser.parse_args()
 
     return args
@@ -49,8 +50,8 @@ def main():
 
     # prioritize log level provided on CLI, fallback to env variable
     log_level = args.log if args.log else os.getenv("LOG_LEVEL")
-    api_key = os.getenv("API_KEY")
-    db_file = os.getenv("DB_FILE")
+    api_key = args.api_key if args.api_key else os.getenv("API_KEY")
+    db_file = args.db_file if args.db_file else os.getenv("DB_FILE")
 
     # set up logging
     logger = Logger(log_level)
