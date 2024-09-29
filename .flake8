@@ -1,0 +1,15 @@
+[flake8]
+
+exclude =
+    # file containing example api json responses
+    test_api_responses.py
+    # ignore all __pycache__/ directories
+    */__pycache__/*,
+    # ignore pytest cache
+    .pytest_cache
+
+max-complexity = 10
+max-line-length = 127
+statistics = True
+show-source = True
+count = True

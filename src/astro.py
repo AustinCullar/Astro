@@ -57,16 +57,17 @@ def main():
     logger = Logger(log_level)
     log = logger.get_logger()
 
-    # pull comments from specified youtube video
+    # pull metadata and comments from specified youtube video
     youtube = YouTubeDataAPI(logger, api_key)
-    comments_df = youtube.get_comments(video_id)
+    video_data = youtube.get_video_metadata(video_id)
+    comments_df = youtube.get_comments(video_data)
 
     sa = SentimentAnalysis(logger)
     sa.add_sentiment_to_dataframe(comments_df)
 
     # Commit dataframe to database
     db = AstroDB(logger, db_file)
-    db.insert_comment_dataframe(video_id, comments_df)
+    db.insert_comment_dataframe(video_data, comments_df)
 
     log.debug('Collected data preview: \n{}'.format(comments_df))
 

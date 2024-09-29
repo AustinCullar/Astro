@@ -5,8 +5,26 @@ from unittest.mock import MagicMock
 
 # Astro modules
 from src.astro_db import AstroDB
+from src.data_collection.data_structures import VideoData
 
-test_video_ids = ['e-qUSPnOlbb', 'whautOBEjLTM', 'Sc_GwhJVdhRY']
+test_video_data = [VideoData(video_id='e-qUSPnOlbb',
+                             channel_id='itXtJBHdZchKKjlnVrjXeCln',
+                             channel_title='YouTube_User1',
+                             view_count=0,
+                             like_count=0,
+                             comment_count=0),
+                   VideoData(video_id='whautOBEjLTM',
+                             channel_id='FvlvKP-khoFMOeyBzmXuaazd',
+                             channel_title='TestUser',
+                             view_count=775,
+                             like_count=212,
+                             comment_count=0),
+                   VideoData(video_id='Sc_GwhJVdhRY',
+                             channel_id='LTO_OySEsmnRtoK-bkAeWXjW',
+                             channel_title='User_YT99',
+                             view_count=12345,
+                             like_count=66423,
+                             comment_count=76123)]
 
 
 @pytest.fixture(scope='function', params=[True, False])
@@ -41,20 +59,23 @@ class TestAstroDB:
 
         assert result
 
-    @pytest.mark.parametrize('video_id', test_video_ids)
-    def test_create_comment_table_for_video(self, astro_db, video_id):
+    @pytest.mark.parametrize('video_data', test_video_data)
+    def test_create_comment_table_for_video(self, astro_db, video_data):
         conn = astro_db.get_db_conn()
         cursor = conn.cursor()
 
         # create entry in Videos table along with a new comment table for that video
-        comment_table_name = astro_db.create_comment_table_for_video(video_id)
+        comment_table_name = astro_db.create_comment_table_for_video(video_data)
 
         # verify creation of entry in Videos and the new comment table
-        cursor.execute(f"SELECT comment_table FROM Videos WHERE video_id='{video_id}'")
-        comment_table_from_video = cursor.fetchone()
+        cursor.execute(f"SELECT * FROM Videos WHERE video_id='{video_data.video_id}'")
+        video_table_data = cursor.fetchone()
 
-        assert comment_table_from_video
-        assert comment_table_from_video[0] == comment_table_name
+        assert video_table_data
+        assert video_table_data[1] == video_data.channel_title
+        assert video_table_data[2] == video_data.channel_id
+        assert video_table_data[3] == video_data.video_id
+        assert video_table_data[4] == comment_table_name
 
         self.created_comment_tables.append(comment_table_name)
 
@@ -72,7 +93,7 @@ class TestAstroDB:
 
             assert row
 
-            comment_table = row[3]  # comment_table is the 4th column
+            comment_table = row[4]  # comment_table is the 5th column
             assert comment_table in self.created_comment_tables
 
     @pytest.mark.parametrize('comment_table_exists', [True, False])
@@ -92,10 +113,10 @@ class TestAstroDB:
         else:
             assert not name
 
-    @pytest.mark.parametrize('video_id', test_video_ids)
-    def test_get_comment_table_for(self, astro_db, video_id):
+    @pytest.mark.parametrize('video_data', test_video_data)
+    def test_get_comment_table_for(self, astro_db, video_data):
         # verify that AstroDB finds the comment table
-        table_name = astro_db.get_comment_table_for(video_id)
+        table_name = astro_db.get_comment_table_for(video_data.video_id)
 
         assert table_name
 
@@ -103,21 +124,21 @@ class TestAstroDB:
         conn = astro_db.get_db_conn()
         cursor = conn.cursor()
 
-        cursor.execute(f"SELECT comment_table FROM Videos WHERE video_id='{video_id}'")
+        cursor.execute(f"SELECT comment_table FROM Videos WHERE video_id='{video_data.video_id}'")
         database_table = cursor.fetchone()
 
         assert database_table
         assert database_table[0] == table_name
 
-    @pytest.mark.parametrize('video_id', test_video_ids)
-    def test_insert_comment_dataframe(self, astro_db, video_id, comment_dataframe):
-        astro_db.insert_comment_dataframe(video_id, comment_dataframe)
+    @pytest.mark.parametrize('video_data', test_video_data)
+    def test_insert_comment_dataframe(self, astro_db, video_data, comment_dataframe):
+        astro_db.insert_comment_dataframe(video_data, comment_dataframe)
 
         conn = astro_db.get_db_conn()
         cursor = conn.cursor()
 
         # check database for dataframe content
-        query = f"SELECT comment_table FROM Videos WHERE video_id='{video_id}'"
+        query = f"SELECT comment_table FROM Videos WHERE video_id='{video_data.video_id}'"
         cursor.execute(query)
         comment_table = cursor.fetchone()
 
