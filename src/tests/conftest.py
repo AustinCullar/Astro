@@ -20,7 +20,6 @@ def comment_dataframe():
     return df
 
 
-
 @pytest.fixture(scope='function')
 def api_comment_response():
     return json.loads(api_responses.test_comment_api_response)

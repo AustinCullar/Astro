@@ -37,6 +37,7 @@ def parametrize_api_comment_response(
 
     return json_response
 
+
 def parametrize_api_video_response(
         json_response,
         channelId='',
@@ -61,6 +62,7 @@ def parametrize_api_video_response(
         json_response['items'][0]['statistics']['commentCount'] = commentCount
 
     return json_response
+
 
 class TestYouTubeDataAPI:
     @pytest.mark.parametrize('textDisplay', ['hello', 'goodbye', '1234'])
@@ -132,7 +134,7 @@ class TestYouTubeDataAPI:
             likeCount,
             viewCount,
             commentCount):
-        
+
         youtube = YouTubeDataAPI(logger, 'test_apikey')
 
         api_video_response = parametrize_api_video_response(

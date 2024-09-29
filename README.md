@@ -19,7 +19,7 @@ each comment.
 1. Install `python3`
 2. Create your python virtual environment with `python3 -m venv <env name>`
 3. Install the packages in the `src/requirements.txt` file to your virtual
-   environment with `pip install -r requirements.txt`.
+   environment with `pip install -r src/requirements.txt`.
 4. Create a file in the `/src` directory called `.env`. This file should contain
    The following values:
    ```
@@ -28,7 +28,9 @@ each comment.
     LOG_LEVEL=[debug|info|warn|error]
     ```
     For information about how to create an API key, see [here](https://blog.hubspot.com/website/how-to-get-youtube-api-key).
-5. Run the tool with `python astro.py <YouTube video URL>` to start collecting
+5. Run `pushd src/ && pip install -e . && popd` to install the project packages.
+   This is required for testing with `pytest`.
+6. Run the tool with `python astro.py <YouTube video URL>` to start collecting
    data. You can see output from an example run in the next section.
 
 ## Example

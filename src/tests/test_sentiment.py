@@ -4,7 +4,7 @@ Tests for the SentimentAnalysis class.
 import pytest
 
 # Astro modules
-from src.data_collection.sentiment import SentimentAnalysis
+from data_collection.sentiment import SentimentAnalysis
 
 positive_string = 'This is amazing!'
 negative_string = 'This is terrible!'

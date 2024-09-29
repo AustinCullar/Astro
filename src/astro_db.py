@@ -72,7 +72,6 @@ class AstroDB:
         """
         Create a new comment table for a specific video id.
         """
-        author = 'TDOO'
         table_name = self.create_unique_table_name()
         assert table_name, "Failed to create unique comment table in database"
 
