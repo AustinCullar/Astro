@@ -4,7 +4,7 @@ Tests for the Logging class.
 import pytest
 
 # Astro modules
-from log import Logger
+from src.log import Logger
 
 
 class TestLogging:

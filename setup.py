@@ -7,6 +7,6 @@ setup(
     packages=find_packages(),
 
     # Top level, single-file modules
-    py_modules=["log",
-                "astro_db"]
+    py_modules=["src/log",
+                "src/astro_db"]
 )

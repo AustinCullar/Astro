@@ -4,7 +4,7 @@ import googleapiclient
 
 import pandas as pd
 from unittest.mock import MagicMock
-from log import Logger
+from src.log import Logger
 
 import test_api_responses as api_responses
 

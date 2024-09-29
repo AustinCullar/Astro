@@ -4,8 +4,8 @@ import os
 from unittest.mock import MagicMock
 
 # Astro modules
-from astro_db import AstroDB
-from data_collection.data_structures import VideoData
+from src.astro_db import AstroDB
+from src.data_collection.data_structures import VideoData
 
 test_video_data = [VideoData(video_id='e-qUSPnOlbb',
                              channel_id='itXtJBHdZchKKjlnVrjXeCln',

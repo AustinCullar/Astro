@@ -5,7 +5,7 @@ Functions for gathering data from YouTube.
 import pandas as pd
 import traceback
 
-from data_collection.data_structures import VideoData
+from src.data_collection.data_structures import VideoData
 from googleapiclient.discovery import build
 
 

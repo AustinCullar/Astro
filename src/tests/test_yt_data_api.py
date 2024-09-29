@@ -4,8 +4,8 @@ Tests for the YouTubeDataAPI class.
 import pytest
 
 # Astro modules
-from data_collection.data_structures import VideoData
-from data_collection.yt_data_api import YouTubeDataAPI
+from src.data_collection.data_structures import VideoData
+from src.data_collection.yt_data_api import YouTubeDataAPI
 
 
 def parametrize_api_comment_response(
