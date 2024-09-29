@@ -61,13 +61,14 @@ class AstroDB:
         """
         self.cursor.execute("CREATE TABLE IF NOT EXISTS Videos ( \
             id INTEGER PRIMARY KEY AUTOINCREMENT, \
-            author TEXT, \
+            channel_title TEXT, \
+            channel_id TEXT, \
             video_id TEXT, \
             comment_table TEXT)")
 
         self.conn.commit()
 
-    def create_comment_table_for_video(self, video_id: str) -> str:
+    def create_comment_table_for_video(self, video_data) -> str:
         """
         Create a new comment table for a specific video id.
         """
@@ -75,8 +76,14 @@ class AstroDB:
         table_name = self.create_unique_table_name()
         assert table_name, "Failed to create unique comment table in database"
 
-        self.cursor.execute("INSERT INTO Videos (author, video_id, comment_table) \
-            VALUES ('{}', '{}', '{}')".format(author, video_id, table_name))
+        query = f"INSERT INTO Videos (channel_title, channel_id, video_id, comment_table) \
+                VALUES ( \
+                '{video_data.channel_title}', \
+                '{video_data.channel_id}', \
+                '{video_data.video_id}', \
+                '{table_name}')"
+
+        self.cursor.execute(query)
 
         self.cursor.execute("CREATE TABLE {} ( \
             id INTEGER PRIMARY KEY AUTOINCREMENT, \
@@ -88,7 +95,7 @@ class AstroDB:
 
         self.conn.commit()
 
-        self.logger.debug('Video table {} created for video id {}'.format(table_name, video_id))
+        self.logger.debug('Video table {} created for video id {}'.format(table_name, video_data.video_id))
 
         return table_name
 
@@ -107,14 +114,14 @@ class AstroDB:
         else:
             return ''
 
-    def insert_comment_dataframe(self, video_id: str, dataframe: pd.DataFrame):
+    def insert_comment_dataframe(self, video_data, dataframe: pd.DataFrame):
         """
         Given a video ID and a dataframe, commit the dataframe to the database.
         """
-        comment_table = self.get_comment_table_for(video_id)
+        comment_table = self.get_comment_table_for(video_data.video_id)
         if not comment_table:
-            self.logger.debug('Video table for {} did not exist'.format(video_id))
-            comment_table = self.create_comment_table_for_video(video_id)
+            self.logger.debug('Comment table for video id {} did not exist'.format(video_data.video_id))
+            comment_table = self.create_comment_table_for_video(video_data)
 
         # eventually we should use 'append' here
         dataframe.to_sql(comment_table, self.conn, if_exists='replace')

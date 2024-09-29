@@ -4,7 +4,8 @@ Tests for the YouTubeDataAPI class.
 import pytest
 
 # Astro modules
-from src.data_collection.yt_data_api import YouTubeDataAPI
+from data_collection.data_structures import VideoData
+from data_collection.yt_data_api import YouTubeDataAPI
 
 
 def parametrize_api_comment_response(
@@ -36,6 +37,30 @@ def parametrize_api_comment_response(
 
     return json_response
 
+def parametrize_api_video_response(
+        json_response,
+        channelId='',
+        channelTitle='',
+        likeCount='',
+        viewCount='',
+        commentCount=''):
+
+    if channelId:
+        json_response['items'][0]['snippet']['channelId'] = channelId
+
+    if channelTitle:
+        json_response['items'][0]['snippet']['channelTitle'] = channelTitle
+
+    if likeCount:
+        json_response['items'][0]['statistics']['likeCount'] = likeCount
+
+    if viewCount:
+        json_response['items'][0]['statistics']['viewCount'] = viewCount
+
+    if commentCount:
+        json_response['items'][0]['statistics']['commentCount'] = commentCount
+
+    return json_response
 
 class TestYouTubeDataAPI:
     @pytest.mark.parametrize('textDisplay', ['hello', 'goodbye', '1234'])
@@ -47,7 +72,7 @@ class TestYouTubeDataAPI:
             self,
             logger,
             api_comment_response,
-            mock_google_http_request,
+            mock_comment_google_http_request,
             textDisplay,
             publishedAt,
             authorDisplayName,
@@ -64,7 +89,15 @@ class TestYouTubeDataAPI:
             replyTextDisplay=replyTextDisplay,
             replyAuthorDisplayName=replyAuthorDisplayName)
 
-        df = youtube.get_comments('test_videoid')
+        video_data = VideoData()
+        video_data.video_id = 'video_id'
+        video_data.channel_id = 'FvlvKP-khoFMOeyBzmXuaazd'
+        video_data.channel_title = 'channel_title'
+        video_data.view_count = 123
+        video_data.like_count = 123
+        video_data.comment_count = 123
+
+        df = youtube.get_comments(video_data)
 
         assert not df.empty
 
@@ -80,3 +113,40 @@ class TestYouTubeDataAPI:
             else:  # reply comment
                 assert replyTextDisplay == row['comment']
                 assert replyAuthorDisplayName == row['user']
+
+    @pytest.mark.parametrize('channelId',
+                             ['itXtJBHdZchKKjlnVrjXeCln',
+                              'FvlvKP-khoFMOeyBzmXuaazd',
+                              'LTO_OySEsmnRtoK-bkAeWXjW'])
+    @pytest.mark.parametrize('channelTitle', ['YouTube_User', 'Test-User1'])
+    @pytest.mark.parametrize('likeCount', ['0', '894', '11243'])
+    @pytest.mark.parametrize('viewCount', ['0', '245', '66345'])
+    @pytest.mark.parametrize('commentCount', ['0', '243', '76345'])
+    def test_get_video_metadata(
+            self,
+            logger,
+            api_video_response,
+            mock_video_google_http_request,
+            channelId,
+            channelTitle,
+            likeCount,
+            viewCount,
+            commentCount):
+        
+        youtube = YouTubeDataAPI(logger, 'test_apikey')
+
+        api_video_response = parametrize_api_video_response(
+                api_video_response,
+                channelId=channelId,
+                channelTitle=channelTitle,
+                likeCount=likeCount,
+                viewCount=viewCount,
+                commentCount=commentCount)
+
+        video_data = youtube.get_video_metadata('video_id')
+
+        assert video_data.channel_id == channelId
+        assert video_data.channel_title == channelTitle
+        assert video_data.like_count == likeCount
+        assert video_data.view_count == viewCount
+        assert video_data.comment_count == commentCount
