@@ -18,9 +18,12 @@ each comment.
 ## Setup Instructions
 1. Install `python3`
 2. Create your python virtual environment with `python3 -m venv <env name>`
-3. Install the packages in the `src/requirements.txt` file to your virtual
-   environment with `pip install -r src/requirements.txt`.
-4. Create a file in the `/src` directory called `.env`. This file should contain
+3. Install the packages in the `requirements.txt` file to your virtual
+   environment with `pip install -r requirements.txt`.
+4. Run `pip install -e .` to install the project packages. For developers, run
+   `pip install -e pip install -e '.[dev]'` to install all test dependencies as
+   well.
+5. Create a file in the `/src` directory called `.env`. This file should contain
    The following values:
    ```
     API_KEY=<key> # your YouTube Data API key
@@ -28,8 +31,23 @@ each comment.
     LOG_LEVEL=[debug|info|warn|error]
     ```
     For information about how to create an API key, see [here](https://blog.hubspot.com/website/how-to-get-youtube-api-key).
-5. Run `pushd src/ && pip install -e . && popd` to install the project packages.
-   This is required for testing with `pytest`.
+
+   Alternatively, these values can be passed to Astro on the command line. See
+   the help menu below for more information.
+   ```
+    (astro) $ python astro.py -h
+    usage: astro.py [-h] [-l {debug,info,warn,error}] [--api-key API_KEY] [--db-file DB_FILE] youtube_url
+
+    positional arguments:
+      youtube_url           youtube video URL
+
+    options:
+      -h, --help            show this help message and exit
+      -l {debug,info,warn,error}, --log {debug,info,warn,error}
+                            Set the logging level
+      --api-key API_KEY     YouTube Data API key
+      --db-file DB_FILE     database filename
+    ```
 6. Run the tool with `python astro.py <YouTube video URL>` to start collecting
    data. You can see output from an example run in the next section.
 
@@ -54,7 +72,7 @@ DEBUG:astro.py:main: Collected data preview:
 
 ## Background
 YouTube has been a primary source of information and entertainment in my house
-for years. I've found that when reading comments on YouTube videos, I'm often 
+for years. I've found that when reading comments on YouTube videos, I'm often
 perplexed by the content there. Wanting to understand this behavior, whether it
 was the product of real users or bots, I started researching social media usage.
 This project is my attempt to gather data from YouTube videos and their comments

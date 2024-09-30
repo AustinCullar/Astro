@@ -30,11 +30,11 @@ def parse_args():
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("youtube_url", type=str, help="URL to youtube video")
+    parser.add_argument("youtube_url", type=str, help="youtube video URL")
     parser.add_argument("-l", "--log", type=str, choices=['debug', 'info', 'warn', 'error'],
                         help='Set the logging level')
     parser.add_argument("--api-key", type=str, help="YouTube Data API key")
-    parser.add_argument("--db-file", type=str, help="Database filename")
+    parser.add_argument("--db-file", type=str, help="database filename")
     args = parser.parse_args()
 
     return args
