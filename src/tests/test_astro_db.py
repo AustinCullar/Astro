@@ -107,7 +107,6 @@ class TestAstroDB:
             name = astro_db.create_unique_table_name()
             assert name == table_names[1]
 
-
     @pytest.mark.parametrize('video_data', test_video_data)
     def test_get_comment_table_for(self, astro_db, video_data):
         # verify that AstroDB finds the comment table
