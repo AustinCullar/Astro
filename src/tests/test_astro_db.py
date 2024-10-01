@@ -1,4 +1,5 @@
 import pytest
+import sqlite3
 import os
 
 from unittest.mock import MagicMock
@@ -6,6 +7,7 @@ from unittest.mock import MagicMock
 # Astro modules
 from src.astro_db import AstroDB
 from src.data_collection.data_structures import VideoData
+from src.tests.astro_mocks import MockSqlite3Connection
 
 test_video_data = [VideoData(video_id='e-qUSPnOlbb',
                              channel_id='itXtJBHdZchKKjlnVrjXeCln',
@@ -27,22 +29,29 @@ test_video_data = [VideoData(video_id='e-qUSPnOlbb',
                              comment_count=76123)]
 
 
-@pytest.fixture(scope='function', params=[True, False])
-def mock_comment_table_exists(request):
-    """
-    Mock AstroDB.comment_table_exists to return True on every call. This
-    is used to stress AstroDB.create_unique_table_name.
-    """
-    mock = AstroDB.comment_table_exists
-    mock.execute = MagicMock(return_value=request.param)
-
-
 @pytest.fixture(scope='class')
 def astro_db(logger):
     test_db_file = 'test.db'
     db = AstroDB(logger, test_db_file)
     yield db
     os.remove(test_db_file)
+
+
+@pytest.fixture(scope='function')
+def mock_sqlite3_connect():
+    # save the original connect function
+    sqlite3_connect_orig = sqlite3.connect
+
+    # pass instance of our own MockSqlite3Connection class to MagicMock
+    sqlite_connect_mock = MockSqlite3Connection()
+    sqlite3.connect = MagicMock(return_value=sqlite_connect_mock)
+
+    # yield the sqlite_connect_mock object so that the test function can
+    # set the return value
+    yield sqlite_connect_mock
+
+    # restore the original connect function
+    sqlite3.connect = sqlite3_connect_orig
 
 
 class TestAstroDB:
@@ -79,39 +88,25 @@ class TestAstroDB:
 
         self.created_comment_tables.append(comment_table_name)
 
-    def test_comment_table_exists(self, astro_db):
-        conn = astro_db.get_db_conn()
-        cursor = conn.cursor()
+    @pytest.mark.parametrize('table_names', [
+                            ['AAA', 'BAA'],
+                            ['ABB', 'BBB'],
+                            ['ZAA', 'ABA'],
+                            ['ZZZ', ''],
+                            [None, 'AAA']
+                            ])
+    def test_create_unique_table_name(self, logger, mock_sqlite3_connect, table_names):
+        mock_sqlite3_connect.set_return_value(table_names[0])
+        astro_db = AstroDB(logger, 'test2.db')
 
-        for comment_table in self.created_comment_tables:
-            assert astro_db.comment_table_exists(comment_table)
-
-        # get existing comment table from Videos table
-        for table_name in self.created_comment_tables:
-            cursor.execute(f"SELECT * FROM Videos WHERE comment_table='{table_name}'")
-            row = cursor.fetchone()
-
-            assert row
-
-            comment_table = row[4]  # comment_table is the 5th column
-            assert comment_table in self.created_comment_tables
-
-    @pytest.mark.parametrize('comment_table_exists', [True, False])
-    def test_create_unique_table_name(self, astro_db, comment_table_exists):
-        # this method generates a random 12 character string of capital letters
-        # the likelihood of collision is extremely low (1 in (26^12))
-        # using the mock below to simulate a name collision to exercise error path
-        mock = astro_db
-        mock.comment_table_exists = MagicMock(return_value=comment_table_exists)
-        name = astro_db.create_unique_table_name()
-
-        if not comment_table_exists:  # we're expecting a normal run, unlikely to have a name collision
-            # verify that the returned string is valid for sql table names
-            assert name
-            assert '-' not in name
-            assert '_' not in name
+        if table_names[0] == 'ZZZ':
+            with pytest.raises(StopIteration) as exception:
+                name = astro_db.create_unique_table_name()
+                assert str(exception.value) == "Limit exceeded for number of comment tables in database"
         else:
-            assert not name
+            name = astro_db.create_unique_table_name()
+            assert name == table_names[1]
+
 
     @pytest.mark.parametrize('video_data', test_video_data)
     def test_get_comment_table_for(self, astro_db, video_data):
