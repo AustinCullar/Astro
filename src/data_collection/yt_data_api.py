@@ -23,8 +23,8 @@ class YouTubeDataAPI:
     @staticmethod
     def valid_video_id(video_id: str) -> bool:
         valid_tokens = (string.ascii_uppercase +
-                       string.ascii_lowercase +
-                       string.digits + '-' + '_')
+                        string.ascii_lowercase +
+                        string.digits + '-' + '_')
 
         if video_id:
             for token in video_id:

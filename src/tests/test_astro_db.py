@@ -99,8 +99,8 @@ class TestAstroDB:
         cursor = conn.cursor()
 
         bad_input = not video_data or \
-                    not video_data.channel_id or \
-                    not YouTubeDataAPI.valid_video_id(video_data.video_id)
+            not video_data.channel_id or \
+            not YouTubeDataAPI.valid_video_id(video_data.video_id)
 
         if bad_input:  # expect an exception
             with pytest.raises(ValueError) as exception:

@@ -2,10 +2,10 @@
 Class for managing comment/video database.
 """
 import sqlite3
-import string
 
 import pandas as pd
 from src.data_collection.yt_data_api import YouTubeDataAPI
+
 
 class AstroDB:
     conn = None
