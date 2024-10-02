@@ -38,6 +38,6 @@ jobs:
         coverage run -m pytest
         coverage xml
     - name: Generate coverage report
-      uses: irongut/CodeCoverageSummary@1.3.0
+      uses: irongut/CodeCoverageSummary@v1.3.0
       with:
         filename: coverage.xml
