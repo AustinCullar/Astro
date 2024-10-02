@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 # Astro modules
 from src.astro_db import AstroDB
 from src.data_collection.data_structures import VideoData
+from src.data_collection.yt_data_api import YouTubeDataAPI
 from src.tests.astro_mocks import MockSqlite3Connection
 
 test_video_data = [VideoData(video_id='e-qUSPnOlbb',
@@ -26,7 +27,16 @@ test_video_data = [VideoData(video_id='e-qUSPnOlbb',
                              channel_title='User_YT99',
                              view_count=12345,
                              like_count=66423,
-                             comment_count=76123)]
+                             comment_count=76123),
+                   # case where an invalid video_id string is provided
+                   VideoData(video_id='bad data',
+                             channel_id='bad data',
+                             channel_title='bad data'),
+                   # empty data set case
+                   VideoData(video_id='',
+                             channel_id='',
+                             channel_title=''),
+                   None]
 
 
 @pytest.fixture(scope='class')
@@ -54,6 +64,21 @@ def mock_sqlite3_connect():
     sqlite3.connect = sqlite3_connect_orig
 
 
+@pytest.fixture(scope='function')
+def database_fault(mock_sqlite3_connect, logger):
+    """
+    Force the database queries to return None
+    """
+    valid_video_id_orig = YouTubeDataAPI.valid_video_id
+
+    YouTubeDataAPI.valid_video_id = MagicMock(return_value=True)
+    mock_sqlite3_connect.set_return_value(None)
+
+    yield AstroDB(logger, 'test2.db')
+
+    YouTubeDataAPI.valid_video_id = valid_video_id_orig
+
+
 class TestAstroDB:
     created_comment_tables = []
 
@@ -73,20 +98,32 @@ class TestAstroDB:
         conn = astro_db.get_db_conn()
         cursor = conn.cursor()
 
-        # create entry in Videos table along with a new comment table for that video
-        comment_table_name = astro_db.create_comment_table_for_video(video_data)
+        bad_input = not video_data or \
+                    not video_data.channel_id or \
+                    not YouTubeDataAPI.valid_video_id(video_data.video_id)
 
-        # verify creation of entry in Videos and the new comment table
-        cursor.execute(f"SELECT * FROM Videos WHERE video_id='{video_data.video_id}'")
-        video_table_data = cursor.fetchone()
+        if bad_input:  # expect an exception
+            with pytest.raises(ValueError) as exception:
+                comment_table_name = astro_db.create_comment_table_for_video(video_data)
+                if not video_data:
+                    assert str(exception.value) == 'NULL video data'
+                elif not video_data.channel_id or not video_data.video_id:
+                    assert str(exception.value) == 'Invalid video data'
+        else:
+            # create entry in Videos table along with a new comment table for that video
+            comment_table_name = astro_db.create_comment_table_for_video(video_data)
 
-        assert video_table_data
-        assert video_table_data[1] == video_data.channel_title
-        assert video_table_data[2] == video_data.channel_id
-        assert video_table_data[3] == video_data.video_id
-        assert video_table_data[4] == comment_table_name
+            # verify creation of entry in Videos and the new comment table
+            cursor.execute(f"SELECT * FROM Videos WHERE video_id='{video_data.video_id}'")
+            video_table_data = cursor.fetchone()
 
-        self.created_comment_tables.append(comment_table_name)
+            assert video_table_data
+            assert video_table_data[1] == video_data.channel_title
+            assert video_table_data[2] == video_data.channel_id
+            assert video_table_data[3] == video_data.video_id
+            assert video_table_data[4] == comment_table_name
+
+            self.created_comment_tables.append(comment_table_name)
 
     @pytest.mark.parametrize('table_names', [
                             ['AAA', 'BAA'],
@@ -102,56 +139,76 @@ class TestAstroDB:
         if table_names[0] == 'ZZZ':
             with pytest.raises(StopIteration) as exception:
                 name = astro_db.create_unique_table_name()
-                assert str(exception.value) == "Limit exceeded for number of comment tables in database"
+                assert str(exception.value) == 'Limit exceeded for number of comment tables in database'
         else:
             name = astro_db.create_unique_table_name()
             assert name == table_names[1]
 
-    @pytest.mark.parametrize('video_data', test_video_data)
-    def test_get_comment_table_for(self, astro_db, video_data):
-        # verify that AstroDB finds the comment table
-        table_name = astro_db.get_comment_table_for(video_data.video_id)
+    @pytest.mark.parametrize('fail_database_query', [True, False])
+    @pytest.mark.parametrize('video_id', [video_data.video_id for video_data in test_video_data if video_data])
+    def test_get_comment_table_for(self, request, astro_db, fail_database_query, video_id):
+        if fail_database_query:
+            # force database to return None in order to test lookup failure path
+            astro_db = request.getfixturevalue('database_fault')
 
-        assert table_name
+        # consider this a normal run if we have a valid video_id and no expected database failure
+        normal_run = YouTubeDataAPI.valid_video_id(video_id) and not fail_database_query
+
+        # verify that AstroDB finds the comment table
+        table_name = astro_db.get_comment_table_for(video_id)
+
+        assert table_name if normal_run else not table_name
 
         # verify that the database agrees with AstroDB
         conn = astro_db.get_db_conn()
         cursor = conn.cursor()
 
-        cursor.execute(f"SELECT comment_table FROM Videos WHERE video_id='{video_data.video_id}'")
+        cursor.execute(f"SELECT comment_table FROM Videos WHERE video_id='{video_id}'")
         database_table = cursor.fetchone()
 
-        assert database_table
-        assert database_table[0] == table_name
+        assert database_table if normal_run else not database_table
+        if normal_run:
+            assert database_table[0] == table_name
 
     @pytest.mark.parametrize('video_data', test_video_data)
     def test_insert_comment_dataframe(self, astro_db, video_data, comment_dataframe):
-        astro_db.insert_comment_dataframe(video_data, comment_dataframe)
+        bad_input = not video_data or \
+                    not YouTubeDataAPI.valid_video_id(video_data.video_id)
 
-        conn = astro_db.get_db_conn()
-        cursor = conn.cursor()
+        if bad_input:  # expect an exception
+            with pytest.raises(ValueError) as exception:
+                astro_db.insert_comment_dataframe(video_data, comment_dataframe)
+                if not video_data:
+                    assert str(exception.value) == 'NULL video data'
+                elif not YouTubeDataAPI.valid_video_id(video_data.video_id):
+                    assert str(exception.value) == 'Invalid video id'
+        else:  # insert dataframe into database, verify table contents
+            astro_db.insert_comment_dataframe(video_data, comment_dataframe)
 
-        # check database for dataframe content
-        query = f"SELECT comment_table FROM Videos WHERE video_id='{video_data.video_id}'"
-        cursor.execute(query)
-        comment_table = cursor.fetchone()
+            conn = astro_db.get_db_conn()
+            cursor = conn.cursor()
 
-        # there should only be one comment table
-        assert len(comment_table) == 1
+            # check database for dataframe content
+            query = f"SELECT comment_table FROM Videos WHERE video_id='{video_data.video_id}'"
+            cursor.execute(query)
+            comment_table = cursor.fetchone()
 
-        comment_table = comment_table[0]
+            # there should only be one comment table
+            assert len(comment_table) == 1
 
-        # grab all rows from coment tables
-        query = f"SELECT * FROM {comment_table}"
-        cursor.execute(query)
-        comment_data = cursor.fetchall()
+            comment_table = comment_table[0]
 
-        # verify that the data in the table matches that in the dataframe
-        index = 0
-        for row in comment_data:
-            assert row[0] == index
-            assert row[1] == comment_dataframe.loc[index]['comment']
-            assert row[2] == comment_dataframe.loc[index]['user']
-            assert row[3] == comment_dataframe.loc[index]['date']
+            # grab all rows from coment tables
+            query = f"SELECT * FROM {comment_table}"
+            cursor.execute(query)
+            comment_data = cursor.fetchall()
 
-            index += 1
+            # verify that the data in the table matches that in the dataframe
+            index = 0
+            for row in comment_data:
+                assert row[0] == index
+                assert row[1] == comment_dataframe.loc[index]['comment']
+                assert row[2] == comment_dataframe.loc[index]['user']
+                assert row[3] == comment_dataframe.loc[index]['date']
+
+                index += 1

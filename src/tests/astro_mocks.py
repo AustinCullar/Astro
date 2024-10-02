@@ -15,8 +15,8 @@ class MockSqlite3Cursor:
         else:
             return None
 
-    def execute(self, query: str):
-        return self.return_value
+    def execute(self, *args):
+        return
 
 
 class MockSqlite3Connection:

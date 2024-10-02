@@ -2,9 +2,10 @@
 Class for managing comment/video database.
 """
 import sqlite3
+import string
 
 import pandas as pd
-
+from src.data_collection.yt_data_api import YouTubeDataAPI
 
 class AstroDB:
     conn = None
@@ -99,6 +100,16 @@ class AstroDB:
         """
         Create a new comment table for a specific video id.
         """
+        if not video_data:
+            raise ValueError('NULL video data')
+
+        if not video_data.channel_id or not YouTubeDataAPI.valid_video_id(video_data.video_id):
+            raise ValueError('Invalid video data')
+
+        if not video_data.channel_title:
+            # Missing the channel title is not critical, but should be investigated
+            self.logger.warn('Missing channel title')
+
         table_name = self.create_unique_table_name()
         assert table_name, "Failed to create unique comment table in database"
 
@@ -129,12 +140,16 @@ class AstroDB:
         """
         Given a video id, return the associated comment table, if any.
         """
-        get_comment_table_for_video = \
+        if not YouTubeDataAPI.valid_video_id(video_id):  # don't waste time querying database
+            return ''
+
+        get_comment_table_for_video_id = \
             f"SELECT comment_table FROM Videos WHERE video_id='{video_id}'"
 
-        self.cursor.execute(get_comment_table_for_video)
+        self.cursor.execute(get_comment_table_for_video_id)
 
         table = self.cursor.fetchone()
+
         if table:
             return table[0]
         else:
@@ -144,6 +159,12 @@ class AstroDB:
         """
         Given a video ID and a dataframe, commit the dataframe to the database.
         """
+        if not video_data:
+            raise ValueError('NULL video data')
+
+        if not YouTubeDataAPI.valid_video_id(video_data.video_id):
+            raise ValueError('Invalid video id')
+
         comment_table = self.get_comment_table_for(video_data.video_id)
         if not comment_table:
             self.logger.debug('Comment table for video id {} did not exist'.format(video_data.video_id))
