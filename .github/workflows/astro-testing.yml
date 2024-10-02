@@ -33,9 +33,11 @@ jobs:
       run: |
         # Run flake8 using the .flake8 config file
         flake8
-    - name: Run pytest under coverage
+    - name: Run pytest and generate coverage report
       run: |
         coverage run -m pytest
+        coverage xml
     - name: Generate coverage report
-      run: |
-        coverage report -m
+      uses: irongut/CodeCoverageSummary@1.3.0
+      with:
+        filename: coverage.xml
