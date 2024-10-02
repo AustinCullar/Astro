@@ -4,6 +4,7 @@ Functions for gathering data from YouTube.
 
 import pandas as pd
 import traceback
+import string
 
 from src.data_collection.data_structures import VideoData
 from googleapiclient.discovery import build
@@ -18,6 +19,23 @@ class YouTubeDataAPI:
         self.logger = logger.get_logger()
         self.api_key = api_key
         self.youtube = build('youtube', 'v3', developerKey=self.api_key)
+
+    @staticmethod
+    def valid_video_id(video_id: str) -> bool:
+        valid_tokens = (string.ascii_uppercase +
+                        string.ascii_lowercase +
+                        string.digits + '-' + '_')
+
+        if video_id:
+            for token in video_id:
+                if token not in valid_tokens:
+                    return False
+
+            # all tokens are valid
+            return True
+
+        # null video_id
+        return False
 
     def parse_comment_api_response(self, response) -> pd.DataFrame:
         """

@@ -2,10 +2,9 @@
 Class for managing comment/video database.
 """
 import sqlite3
-import string
-import random
 
 import pandas as pd
+from src.data_collection.yt_data_api import YouTubeDataAPI
 
 
 class AstroDB:
@@ -22,36 +21,65 @@ class AstroDB:
     def get_db_conn(self):
         return self.conn
 
-    def comment_table_exists(self, table_name: str) -> bool:
+    def get_next_table_name(self, last_table_name: str) -> str:
         """
-        Check the 'Videos' table for an entry containing the provided
-        table name in the 'comment_table' column.
+        Roll the provided string forward by 'incrementing' the
+        letters. See below for some example transitions:
+
+        AAA -> BAA
+        BAA -> CAA
+        ...
+        ZAA -> ABA
+        ABA -> BBA
         """
+        # 'roll' the name forward
+        def next_char(c: chr) -> chr:
+            return chr(ord(c) + 1)
 
-        query = f"SELECT * FROM Videos WHERE comment_table='{table_name}'"
-        self.cursor.execute(query)
-        table_exists = self.cursor.fetchone()
+        new_name = ''
+        rolled = 0
 
-        return bool(table_exists)
+        for i in range(len(last_table_name)):
+            if last_table_name[i] != 'Z':
+                new_name += next_char(last_table_name[i])
+                new_name += last_table_name[i+1:len(last_table_name)]
+                break
+            else:
+                rolled += 1
+                new_name += 'A'
+                if rolled == len(last_table_name):
+                    raise StopIteration("Limit exceeded for number of comment tables in database")
+
+        return new_name
 
     def create_unique_table_name(self) -> str:
         """
-        Create a random table name from uppercase letters.
+        This function effectively implements a string odometer. The
+        name returned will be a 3 character string consisting of capital
+        letters. Each successive call will 'roll forward' the last-created
+        comment table name.
+
+        Once the odometer reaches its limit of ZZZ, the next call will
+        result in an exception. This should only happen after the creation of
+        26^3 (17576) tables, which is a limit I'm comfortable with since I doubt
+        we'll be tracking over one hundred YouTube videos, let alone over 17k.
         """
-        attempts = 3  # 3 attempts to generate unique string
-        id_string = ''
+        # Get most recent comment table name by grabbing latest entry in the Videos table
+        self.cursor.execute("SELECT comment_table FROM Videos ORDER BY id DESC LIMIT 1")
 
-        # Generate random names until we get one that doesn't exist
-        while attempts > 0:
-            id_string = ''.join(random.choices(string.ascii_uppercase, k=12))
+        last_table_name = self.cursor.fetchone()
+        if not last_table_name:  # this is the first comment table we're creating
+            return 'AAA'
+        else:
+            last_table_name = last_table_name[0]
 
-            if self.comment_table_exists(id_string):
-                self.logger.warning('Comment table name collision!')
-                attempts -= 1
-            else:
-                return id_string
+        self.logger.debug('last table name: {}'.format(last_table_name))
 
-        return ''
+        new_name = self.get_next_table_name(last_table_name)
+
+        self.logger.debug('unique table name: {}'.format(new_name))
+
+        return new_name
 
     def create_videos_table(self):
         """
@@ -72,6 +100,16 @@ class AstroDB:
         """
         Create a new comment table for a specific video id.
         """
+        if not video_data:
+            raise ValueError('NULL video data')
+
+        if not video_data.channel_id or not YouTubeDataAPI.valid_video_id(video_data.video_id):
+            raise ValueError('Invalid video data')
+
+        if not video_data.channel_title:
+            # Missing the channel title is not critical, but should be investigated
+            self.logger.warn('Missing channel title')
+
         table_name = self.create_unique_table_name()
         assert table_name, "Failed to create unique comment table in database"
 
@@ -102,12 +140,16 @@ class AstroDB:
         """
         Given a video id, return the associated comment table, if any.
         """
-        get_comment_table_for_video = \
+        if not YouTubeDataAPI.valid_video_id(video_id):  # don't waste time querying database
+            return ''
+
+        get_comment_table_for_video_id = \
             f"SELECT comment_table FROM Videos WHERE video_id='{video_id}'"
 
-        self.cursor.execute(get_comment_table_for_video)
+        self.cursor.execute(get_comment_table_for_video_id)
 
         table = self.cursor.fetchone()
+
         if table:
             return table[0]
         else:
@@ -117,6 +159,12 @@ class AstroDB:
         """
         Given a video ID and a dataframe, commit the dataframe to the database.
         """
+        if not video_data:
+            raise ValueError('NULL video data')
+
+        if not YouTubeDataAPI.valid_video_id(video_data.video_id):
+            raise ValueError('Invalid video id')
+
         comment_table = self.get_comment_table_for(video_data.video_id)
         if not comment_table:
             self.logger.debug('Comment table for video id {} did not exist'.format(video_data.video_id))
