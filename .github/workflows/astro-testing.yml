@@ -58,3 +58,6 @@ jobs:
       with:
         recreate: true
         path: coverage.xml
+      run: |
+        ls
+        pwd
