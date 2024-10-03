@@ -121,7 +121,10 @@ class TestAstroDB:
             assert video_table_data[1] == video_data.channel_title
             assert video_table_data[2] == video_data.channel_id
             assert video_table_data[3] == video_data.video_id
-            assert video_table_data[4] == comment_table_name
+            assert video_table_data[4] == video_data.like_count
+            assert video_table_data[5] == video_data.view_count
+            assert video_table_data[6] == video_data.comment_count
+            assert video_table_data[7] == comment_table_name
 
             self.created_comment_tables.append(comment_table_name)
 

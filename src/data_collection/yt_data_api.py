@@ -42,10 +42,13 @@ class YouTubeDataAPI:
         Parse API response for comment query. This will grab all comments and their replies,
         storing the resulting data in a dataframe.
         """
-        if comment_dataframe is not None and not comment_dataframe.empty:  # we're appending data to the dataframe
-            df_index = len(comment_dataframe.index)-1  # last index in dataframe
+        # if the dataframe is non-null and not empty, we're appending data to the dataframe
+        append_dataframe = comment_dataframe is not None and not comment_dataframe.empty
+
+        if append_dataframe:
+            df_index = len(comment_dataframe.index)  # last index in dataframe
             df = comment_dataframe
-        else:  # we're creating a new dataframe
+        else:  # create new dataframe
             df_index = 0
             df = pd.DataFrame(columns=['comment', 'user', 'date'])
 
@@ -86,13 +89,19 @@ class YouTubeDataAPI:
 
         comment_dataframe = None
         page_token = ''
+        comment_count = video_data.comment_count
         unfetched_comments = True
 
         while unfetched_comments:
+            # The API limits comment requests to 100 records
+            max_results = min(100, comment_count)
+            comment_count -= max_results
+
             request = self.youtube.commentThreads().list(
                 part='snippet,replies',
                 videoId=video_data.video_id,
                 pageToken=page_token,
+                maxResults=max_results,
                 textFormat='plainText')
 
             try:
@@ -128,9 +137,9 @@ class YouTubeDataAPI:
             return_data.video_id = video_id
             return_data.channel_id = video_data['channelId']
             return_data.channel_title = video_data['channelTitle']
-            return_data.like_count = video_stats['likeCount']
-            return_data.view_count = video_stats['viewCount']
-            return_data.comment_count = video_stats['commentCount']
+            return_data.like_count = int(video_stats['likeCount'])
+            return_data.view_count = int(video_stats['viewCount'])
+            return_data.comment_count = int(video_stats['commentCount'])
 
         except Exception as e:
             self.logger.error(str(e))

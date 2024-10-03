@@ -92,6 +92,9 @@ class AstroDB:
             channel_title TEXT, \
             channel_id TEXT, \
             video_id TEXT, \
+            views INT, \
+            likes INT, \
+            comment_count INT, \
             comment_table TEXT)")
 
         self.conn.commit()
@@ -113,11 +116,15 @@ class AstroDB:
         table_name = self.create_unique_table_name()
         assert table_name, "Failed to create unique comment table in database"
 
-        query = f"INSERT INTO Videos (channel_title, channel_id, video_id, comment_table) \
+        query = f"INSERT INTO Videos \
+                (channel_title, channel_id, video_id, views, likes, comment_count, comment_table) \
                 VALUES ( \
                 '{video_data.channel_title}', \
                 '{video_data.channel_id}', \
                 '{video_data.video_id}', \
+                '{video_data.like_count}', \
+                '{video_data.view_count}', \
+                '{video_data.comment_count}', \
                 '{table_name}')"
 
         self.cursor.execute(query)
