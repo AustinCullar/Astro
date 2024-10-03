@@ -83,21 +83,22 @@ class TestYouTubeDataAPI:
 
         youtube = YouTubeDataAPI(logger, 'test_apikey')
 
+        video_data = VideoData(
+                video_id='video_id',
+                channel_id='FvlvKP-khoFMOeyBzmXuaazd',
+                channel_title='channel_title',
+                view_count=123,
+                like_count=123,
+                comment_count=123)
+
         api_comment_response = parametrize_api_comment_response(
             api_comment_response,
+            videoId=video_data.video_id,
             textDisplay=textDisplay,
             publishedAt=publishedAt,
             authorDisplayName=authorDisplayName,
             replyTextDisplay=replyTextDisplay,
             replyAuthorDisplayName=replyAuthorDisplayName)
-
-        video_data = VideoData()
-        video_data.video_id = 'video_id'
-        video_data.channel_id = 'FvlvKP-khoFMOeyBzmXuaazd'
-        video_data.channel_title = 'channel_title'
-        video_data.view_count = 123
-        video_data.like_count = 123
-        video_data.comment_count = 123
 
         df = youtube.get_comments(video_data)
 
@@ -149,6 +150,6 @@ class TestYouTubeDataAPI:
 
         assert video_data.channel_id == channelId
         assert video_data.channel_title == channelTitle
-        assert video_data.like_count == likeCount
-        assert video_data.view_count == viewCount
-        assert video_data.comment_count == commentCount
+        assert video_data.like_count == int(likeCount)
+        assert video_data.view_count == int(viewCount)
+        assert video_data.comment_count == int(commentCount)
