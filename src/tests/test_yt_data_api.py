@@ -150,6 +150,6 @@ class TestYouTubeDataAPI:
 
         assert video_data.channel_id == channelId
         assert video_data.channel_title == channelTitle
-        assert video_data.like_count == likeCount
-        assert video_data.view_count == viewCount
-        assert video_data.comment_count == commentCount
+        assert video_data.like_count == int(likeCount)
+        assert video_data.view_count == int(viewCount)
+        assert video_data.comment_count == int(commentCount)
