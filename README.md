@@ -1,3 +1,5 @@
+![CI build](https://github.com/AustinCullar/Astro/actions/workflows/astro-testing.yml/badge.svg) ![Test coverage](https://img.shields.io/badge/Code%20Coverage-83%25-success?style=flat)
+
 # Astro
 Automated data collection from YouTube.
 
