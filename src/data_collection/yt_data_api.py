@@ -37,13 +37,17 @@ class YouTubeDataAPI:
         # null video_id
         return False
 
-    def parse_comment_api_response(self, response) -> pd.DataFrame:
+    def parse_comment_api_response(self, response, comment_dataframe) -> pd.DataFrame:
         """
         Parse API response for comment query. This will grab all comments and their replies,
         storing the resulting data in a dataframe.
         """
-        df_index = 0
-        df = pd.DataFrame(columns=['comment', 'user', 'date'])
+        if comment_dataframe is not None and not comment_dataframe.empty:  # we're appending data to the dataframe
+            df_index = len(comment_dataframe.index)-1  # last index in dataframe
+            df = comment_dataframe
+        else:  # we're creating a new dataframe
+            df_index = 0
+            df = pd.DataFrame(columns=['comment', 'user', 'date'])
 
         for item in response['items']:
             has_replies = 0 != item['snippet']['totalReplyCount']
@@ -79,20 +83,29 @@ class YouTubeDataAPI:
         * Publish date
 
         """
-        request = self.youtube.commentThreads().list(
-            part="snippet,replies",
-            videoId=video_data.video_id,
-            textFormat="plainText")
 
         comment_dataframe = None
+        page_token = ''
+        unfetched_comments = True
 
-        try:
-            response = request.execute()
-            comment_dataframe = self.parse_comment_api_response(response)
+        while unfetched_comments:
+            request = self.youtube.commentThreads().list(
+                part='snippet,replies',
+                videoId=video_data.video_id,
+                pageToken=page_token,
+                textFormat='plainText')
 
-        except Exception as e:
-            self.logger.error(str(e))
-            self.logger.error(traceback.format_exc())
+            try:
+                response = request.execute()
+                comment_dataframe = self.parse_comment_api_response(response, comment_dataframe)
+                if 'nextPageToken' in response:  # there are more comments to fetch
+                    page_token = response['nextPageToken']
+                else:
+                    unfetched_comments = False
+
+            except Exception as e:
+                self.logger.error(str(e))
+                self.logger.error(traceback.format_exc())
 
         return comment_dataframe
 
