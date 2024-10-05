@@ -121,8 +121,8 @@ class TestAstroDB:
             assert video_table_data[1] == video_data.channel_title
             assert video_table_data[2] == video_data.channel_id
             assert video_table_data[3] == video_data.video_id
-            assert video_table_data[4] == video_data.like_count
-            assert video_table_data[5] == video_data.view_count
+            assert video_table_data[4] == video_data.view_count
+            assert video_table_data[5] == video_data.like_count
             assert video_table_data[6] == video_data.comment_count
             assert video_table_data[7] == comment_table_name
 
@@ -215,3 +215,20 @@ class TestAstroDB:
                 assert row[3] == comment_dataframe.loc[index]['date']
 
                 index += 1
+
+    @pytest.mark.parametrize('video_data', [video_data for video_data in test_video_data if video_data])
+    def test_get_video_data(self, astro_db, video_data):
+        conn = astro_db.get_db_conn()
+        cursor = conn.cursor()
+
+        if YouTubeDataAPI.valid_video_id(video_data.video_id):
+            cursor.execute(f"SELECT * from Videos WHERE video_id='{video_data.video_id}'")
+            db_entry = cursor.fetchone()
+
+            assert db_entry
+            assert db_entry[1] == video_data.channel_title
+            assert db_entry[2] == video_data.channel_id
+            assert db_entry[3] == video_data.video_id
+            assert db_entry[4] == video_data.view_count
+            assert db_entry[5] == video_data.like_count
+            assert db_entry[6] == video_data.comment_count

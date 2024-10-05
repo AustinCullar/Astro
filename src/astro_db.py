@@ -123,8 +123,8 @@ class AstroDB:
                 '{video_data.channel_title}', \
                 '{video_data.channel_id}', \
                 '{video_data.video_id}', \
-                '{video_data.like_count}', \
                 '{video_data.view_count}', \
+                '{video_data.like_count}', \
                 '{video_data.comment_count}', \
                 '{table_name}')"
 
