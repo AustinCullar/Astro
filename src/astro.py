@@ -60,13 +60,30 @@ def main():
     # pull metadata and comments from specified youtube video
     youtube = YouTubeDataAPI(logger, api_key)
     video_data = youtube.get_video_metadata(video_id)
+
+    # check local database to see if we have data about this video already
+    db = AstroDB(logger, db_file)
+    db_video_data = db.get_video_data(video_data.video_id)
+
+    if db_video_data:  # we already have a database table for this video
+        # determine how many new comments we need to fetch
+        video_data.comment_count -= db_video_data.comment_count
+
+        if 0 >= video_data.comment_count:
+            log.info('No new comments to fetch for provided video')
+            # if comments have been deleted, video_data.comment_count may be a negative value
+            # explicitly set comment_count to 0 here to avoid adding negative value to db
+            video_data.comment_count = 0
+            db.update_video_data(video_data)
+            return
+
     comments_df = youtube.get_comments(video_data)
+    db.update_video_data(video_data)
 
     sa = SentimentAnalysis(logger)
     sa.add_sentiment_to_dataframe(comments_df)
 
-    # Commit dataframe to database
-    db = AstroDB(logger, db_file)
+    # commit dataframe to database
     db.insert_comment_dataframe(video_data, comments_df)
 
     log.debug('Collected data preview: \n{}'.format(comments_df))

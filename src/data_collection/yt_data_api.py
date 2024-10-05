@@ -84,7 +84,6 @@ class YouTubeDataAPI:
         * Username
         * Comment text
         * Publish date
-
         """
 
         comment_dataframe = None
@@ -94,15 +93,19 @@ class YouTubeDataAPI:
 
         while unfetched_comments:
             # The API limits comment requests to 100 records
-            max_results = min(100, comment_count)
-            comment_count -= max_results
+            max_comments = min(100, comment_count)
+
+            self.logger.debug('collecting {} comments'.format(max_comments))
 
             request = self.youtube.commentThreads().list(
                 part='snippet,replies',
                 videoId=video_data.video_id,
                 pageToken=page_token,
-                maxResults=max_results,
+                maxResults=max_comments,
                 textFormat='plainText')
+
+            comment_count -= max_comments
+            unfetched_comments = True if comment_count > 0 else False
 
             try:
                 response = request.execute()

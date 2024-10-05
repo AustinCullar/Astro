@@ -23,6 +23,6 @@ class VideoData:
         self.video_id = video_id
         self.channel_id = channel_id
         self.channel_title = channel_title
-        self.view_count = 0
-        self.like_count = 0
-        self.comment_count = 0
+        self.view_count = view_count
+        self.like_count = like_count
+        self.comment_count = comment_count

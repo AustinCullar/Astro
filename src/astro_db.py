@@ -5,6 +5,7 @@ import sqlite3
 
 import pandas as pd
 from src.data_collection.yt_data_api import YouTubeDataAPI
+from src.data_collection.data_structures import VideoData
 
 
 class AstroDB:
@@ -139,7 +140,7 @@ class AstroDB:
 
         self.conn.commit()
 
-        self.logger.debug('Video table {} created for video id {}'.format(table_name, video_data.video_id))
+        self.logger.debug(f'Video table {table_name} created for video id {video_data.video_id}')
 
         return table_name
 
@@ -174,9 +175,46 @@ class AstroDB:
 
         comment_table = self.get_comment_table_for(video_data.video_id)
         if not comment_table:
-            self.logger.debug('Comment table for video id {} did not exist'.format(video_data.video_id))
+            self.logger.debug(f'Comment table for video id {video_data.video_id} did not exist - creating it now')
             comment_table = self.create_comment_table_for_video(video_data)
 
-        # eventually we should use 'append' here
-        dataframe.to_sql(comment_table, self.conn, if_exists='replace')
+        self.logger.debug(f'Appending comment dataframe to database:\n{dataframe}')
+        dataframe.to_sql(comment_table, self.conn, index=False, if_exists='append')
+
+        self.conn.commit()
+
+    def get_video_data(self, video_id: str) -> VideoData:
+        """
+        Given a video ID, search the database for any existing records for this video.
+        """
+        if not video_id:
+            raise ValueError('Invalid video id')
+
+        self.cursor.execute(f"SELECT * FROM Videos WHERE video_id='{video_id}'")
+        db_record = self.cursor.fetchone()
+
+        if not db_record:
+            self.logger.debug('video record not found in database')
+            return None
+
+        video_data = VideoData(
+                channel_title=db_record[1],
+                channel_id=db_record[2],
+                video_id=db_record[3],
+                like_count=db_record[4],
+                view_count=db_record[5],
+                comment_count=db_record[6])
+
+        return video_data
+
+    def update_video_data(self, video_data):
+        """
+        Update the Videos table with the new metadata.
+        """
+        self.cursor.execute(f"UPDATE Videos SET \
+                comment_count=comment_count+{video_data.comment_count}, \
+                likes={video_data.like_count}, \
+                views={video_data.view_count} \
+                WHERE video_id='{video_data.video_id}'")
+
         self.conn.commit()
