@@ -207,11 +207,11 @@ class TestAstroDB:
             comment_data = cursor.fetchall()
 
             # verify that the data in the table matches that in the dataframe
-            index = 1
+            index = 0
             for row in comment_data:
-                assert row[0] == index
-                assert row[1] == comment_dataframe.loc[index]['comment']
-                assert row[2] == comment_dataframe.loc[index]['user']
+                assert row[0] == index+1
+                assert row[1] == comment_dataframe.loc[index]['user']
+                assert row[2] == comment_dataframe.loc[index]['comment']
                 assert row[3] == comment_dataframe.loc[index]['date']
 
                 index += 1
