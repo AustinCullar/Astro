@@ -7,8 +7,8 @@ import traceback
 import string
 
 from src.data_collection.data_structures import VideoData
+from src.progress import AstroProgress
 from googleapiclient.discovery import build
-from progress import AstroProgress
 
 
 class YouTubeDataAPI:
