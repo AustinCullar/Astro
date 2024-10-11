@@ -8,6 +8,7 @@ import string
 
 from src.data_collection.data_structures import VideoData
 from googleapiclient.discovery import build
+from rich.progress import Progress
 
 
 class YouTubeDataAPI:
@@ -45,6 +46,8 @@ class YouTubeDataAPI:
         # if the dataframe is non-null and not empty, we're appending data to the dataframe
         append_dataframe = comment_dataframe is not None and not comment_dataframe.empty
 
+        comment_count = 0
+
         if append_dataframe:
             df_index = len(comment_dataframe.index)  # last index in dataframe
             df = comment_dataframe
@@ -62,6 +65,7 @@ class YouTubeDataAPI:
 
             df.loc[df_index] = [comment, user, date]
             df_index += 1
+            comment_count += 1
 
             if has_replies:
                 for reply in item['replies']['comments']:
@@ -73,8 +77,9 @@ class YouTubeDataAPI:
 
                     df.loc[df_index] = [comment, user, date]
                     df_index += 1
+                    comment_count += 1
 
-        return df
+        return df, comment_count
 
     def get_comments(self, video_data) -> pd.DataFrame:
         """
@@ -91,33 +96,47 @@ class YouTubeDataAPI:
         comment_count = video_data.comment_count
         unfetched_comments = True
 
-        while unfetched_comments:
-            # The API limits comment requests to 100 records
-            max_comments = min(100, comment_count)
+        with Progress() as progress:
+            progress_steps = comment_count
+            download_task = progress.add_task("[green]Downloading comments", total=progress_steps)
 
-            self.logger.debug('collecting {} comments'.format(max_comments))
+            while not progress.finished:
+                while unfetched_comments:
+                    # The API limits comment requests to 100 records
+                    max_comments = min(100, comment_count)
 
-            request = self.youtube.commentThreads().list(
-                part='snippet,replies',
-                videoId=video_data.video_id,
-                pageToken=page_token,
-                maxResults=max_comments,
-                textFormat='plainText')
+                    self.logger.debug('collecting {} comments'.format(max_comments))
 
-            comment_count -= max_comments
-            unfetched_comments = True if comment_count > 0 else False
+                    request = self.youtube.commentThreads().list(
+                        part='snippet,replies',
+                        videoId=video_data.video_id,
+                        pageToken=page_token,
+                        maxResults=max_comments,
+                        textFormat='plainText')
 
-            try:
-                response = request.execute()
-                comment_dataframe = self.parse_comment_api_response(response, comment_dataframe)
-                if 'nextPageToken' in response:  # there are more comments to fetch
-                    page_token = response['nextPageToken']
-                else:
-                    unfetched_comments = False
+                    comment_count -= max_comments
+                    unfetched_comments = True if comment_count > 0 else False
 
-            except Exception as e:
-                self.logger.error(str(e))
-                self.logger.error(traceback.format_exc())
+                    try:
+                        response = request.execute()
+                        #import json
+                        #print('response: {}'.format(json.dumps(response, indent=4)))
+                        #collected_comments = response['pageInfo']['resultsPerPage']
+                        comment_dataframe, num_comments = self.parse_comment_api_response(response, comment_dataframe)
+                        if 'nextPageToken' in response:  # there are more comments to fetch
+                            page_token = response['nextPageToken']
+                        else:
+                            self.logger.debug("comment collection complete")
+                            unfetched_comments = False
+
+                        progress.update(download_task, advance=num_comments)
+
+                    except Exception as e:
+                        self.logger.error(str(e))
+                        self.logger.error(traceback.format_exc())
+
+                # unexpectedly finished collecting comments, set progress bar to complete
+                progress.update(download_task, completed=progress_steps)
 
         return comment_dataframe
 
