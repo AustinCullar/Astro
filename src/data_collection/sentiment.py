@@ -29,6 +29,9 @@ class SentimentAnalysis:
             nltk.download(pkg, quiet=True, raise_on_error=True)
 
     def add_sentiment_to_dataframe(self, df):
+        if df is None:
+            raise ValueError('received null dataframe')
+
         if not df.empty:
             df['PSentiment'] = ''
             df['NSentiment'] = ''

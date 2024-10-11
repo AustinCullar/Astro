@@ -8,7 +8,7 @@ import string
 
 from src.data_collection.data_structures import VideoData
 from googleapiclient.discovery import build
-from rich.progress import Progress
+from progress import AstroProgress
 
 
 class YouTubeDataAPI:
@@ -96,47 +96,39 @@ class YouTubeDataAPI:
         comment_count = video_data.comment_count
         unfetched_comments = True
 
-        with Progress() as progress:
-            progress_steps = comment_count
-            download_task = progress.add_task("[green]Downloading comments", total=progress_steps)
+        with AstroProgress('Downloading comments', comment_count) as progress:
+            while unfetched_comments:
+                # The API limits comment requests to 100 records
+                max_comments = min(100, comment_count)
 
-            while not progress.finished:
-                while unfetched_comments:
-                    # The API limits comment requests to 100 records
-                    max_comments = min(100, comment_count)
+                self.logger.debug('collecting {} comments'.format(max_comments))
 
-                    self.logger.debug('collecting {} comments'.format(max_comments))
+                request = self.youtube.commentThreads().list(
+                    part='snippet,replies',
+                    videoId=video_data.video_id,
+                    pageToken=page_token,
+                    maxResults=max_comments,
+                    textFormat='plainText')
 
-                    request = self.youtube.commentThreads().list(
-                        part='snippet,replies',
-                        videoId=video_data.video_id,
-                        pageToken=page_token,
-                        maxResults=max_comments,
-                        textFormat='plainText')
+                comment_count -= max_comments
+                unfetched_comments = True if comment_count > 0 else False
 
-                    comment_count -= max_comments
-                    unfetched_comments = True if comment_count > 0 else False
+                try:
+                    response = request.execute()
+                    comment_dataframe, num_comments = self.parse_comment_api_response(response, comment_dataframe)
+                    if 'nextPageToken' in response:  # there are more comments to fetch
+                        page_token = response['nextPageToken']
+                    else:
+                        self.logger.debug("comment collection complete")
+                        unfetched_comments = False
 
-                    try:
-                        response = request.execute()
-                        #import json
-                        #print('response: {}'.format(json.dumps(response, indent=4)))
-                        #collected_comments = response['pageInfo']['resultsPerPage']
-                        comment_dataframe, num_comments = self.parse_comment_api_response(response, comment_dataframe)
-                        if 'nextPageToken' in response:  # there are more comments to fetch
-                            page_token = response['nextPageToken']
-                        else:
-                            self.logger.debug("comment collection complete")
-                            unfetched_comments = False
+                    progress.advance(num_comments)
 
-                        progress.update(download_task, advance=num_comments)
+                except Exception as e:
+                    self.logger.error(str(e))
+                    self.logger.error(traceback.format_exc())
 
-                    except Exception as e:
-                        self.logger.error(str(e))
-                        self.logger.error(traceback.format_exc())
-
-                # unexpectedly finished collecting comments, set progress bar to complete
-                progress.update(download_task, completed=progress_steps)
+            progress.complete()
 
         return comment_dataframe
 
@@ -157,6 +149,7 @@ class YouTubeDataAPI:
             video_stats = response['items'][0]['statistics']
 
             return_data.video_id = video_id
+            return_data.title = video_data['title']
             return_data.channel_id = video_data['channelId']
             return_data.channel_title = video_data['channelTitle']
             return_data.like_count = int(video_stats['likeCount'])

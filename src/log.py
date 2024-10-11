@@ -5,8 +5,12 @@ import logging
 
 
 class Logger:
+    log_level_str: str
+    log_level: int
+    logger: logging.Logger
 
     def __init__(self, log_level_str: str):
+        self.log_level_str = log_level_str
         self.log_level = self.get_log_level(log_level_str)
         self.logger = self.initialize_logging()
 
@@ -32,3 +36,6 @@ class Logger:
 
     def get_logger(self) -> logging.Logger:
         return self.logger
+
+    def level(log_level_str: str) -> bool:
+        return self.get_log_level(log_level_str) == self.log_level
