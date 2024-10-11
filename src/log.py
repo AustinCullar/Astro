@@ -37,5 +37,5 @@ class Logger:
     def get_logger(self) -> logging.Logger:
         return self.logger
 
-    def level(log_level_str: str) -> bool:
+    def level(self, log_level_str: str) -> bool:
         return self.get_log_level(log_level_str) == self.log_level
