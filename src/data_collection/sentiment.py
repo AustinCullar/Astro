@@ -1,14 +1,12 @@
 """
 Functionality for determining the sentiment of a given comment/string. This
-approach utilizes the Natural Language Toolkit in combination with
-SentiWordNet.
-
-This logic was informed by the following article written by "AI & Tech by Nidhika, PhD":
-https://medium.com/@nidhikayadav/sentiment-analysis-with-python-sentiwordnet-fd07ffc557
+approach utilizes the Natural Language Toolkit in combination with SentiWordNet.
 """
 import nltk
 from nltk.corpus import wordnet as wn
 from nltk.corpus import sentiwordnet as swn
+
+from src.progress import AstroProgress
 
 
 class SentimentAnalysis:
@@ -29,14 +27,21 @@ class SentimentAnalysis:
             nltk.download(pkg, quiet=True, raise_on_error=True)
 
     def add_sentiment_to_dataframe(self, df):
-        if not df.empty:
-            df['PSentiment'] = ''
-            df['NSentiment'] = ''
+        if df is None or df.empty:
+            raise ValueError('received null dataframe')
 
+        # add new columns to dataframe
+        df['PSentiment'] = ''
+        df['NSentiment'] = ''
+
+        comment_count = len(df.index)
+        with AstroProgress('Calculating comment sentiment', comment_count) as progress:
             for index, row in df.iterrows():
                 sentiment = self.get_sentiment(row['comment'])
                 df.loc[index, 'PSentiment'] = sentiment[0]
                 df.loc[index, 'NSentiment'] = sentiment[1]
+
+                progress.advance(1)
 
     def get_sentiment(self, comment: str) -> ():
         token_comment = nltk.word_tokenize(comment)

@@ -178,7 +178,6 @@ class AstroDB:
             self.logger.debug(f'Comment table for video id {video_data.video_id} did not exist - creating it now')
             comment_table = self.create_comment_table_for_video(video_data)
 
-        self.logger.debug(f'Appending comment dataframe to database:\n{dataframe}')
         dataframe.to_sql(comment_table, self.conn, index=False, if_exists='append')
 
         self.conn.commit()

@@ -9,7 +9,8 @@ setup(
     # Top level, single-file modules
     py_modules=[
         "src/log",
-        "src/astro_db"],
+        "src/astro_db",
+        "src/progress"],
 
     # Packages required to run the app
     install_requires=[

@@ -20,6 +20,9 @@ def extract_video_id_from_url(url: str) -> str:
     """
 
     video_id = url.split('v=')[1]
+    if not YouTubeDataAPI.valid_video_id(video_id):
+        raise ValueError('Invalid video URL provided')
+
     return video_id
 
 
