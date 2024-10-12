@@ -115,14 +115,14 @@ class YouTubeDataAPI:
 
                 try:
                     response = request.execute()
-                    comment_dataframe, num_comments = self.parse_comment_api_response(response, comment_dataframe)
+                    comment_dataframe, comments_added = self.parse_comment_api_response(response, comment_dataframe)
                     if 'nextPageToken' in response:  # there are more comments to fetch
                         page_token = response['nextPageToken']
                     else:
                         self.logger.debug("comment collection complete")
                         unfetched_comments = False
 
-                    progress.advance(num_comments)
+                    progress.advance(comments_added)
 
                 except Exception as e:
                     self.logger.error(str(e))
