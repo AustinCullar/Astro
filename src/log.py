@@ -2,6 +2,8 @@
 This file contains functionality for logging.
 """
 import logging
+from rich.logging import RichHandler
+from rich.console import Console
 
 
 class Logger:
@@ -29,8 +31,12 @@ class Logger:
         return log_level
 
     def initialize_logging(self) -> logging.Logger:
+        astro_console = Console(soft_wrap=True)
+
         logger = logging.getLogger(__name__)
-        logging.basicConfig(format='%(levelname)s:%(filename)s:%(funcName)s: %(message)s', level=self.log_level)
+        logging.basicConfig(format='%(message)s',
+                            level=self.log_level,
+                            handlers=[RichHandler(rich_tracebacks=True, console=None)])
 
         return logger
 

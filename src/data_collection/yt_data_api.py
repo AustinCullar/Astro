@@ -1,7 +1,7 @@
 """
 Functions for gathering data from YouTube.
 """
-
+import logging
 import pandas as pd
 import traceback
 import string
@@ -20,6 +20,10 @@ class YouTubeDataAPI:
         self.logger = logger.get_logger()
         self.api_key = api_key
         self.youtube = build('youtube', 'v3', developerKey=self.api_key)
+
+        # explicitly set googleapiclient and google.auth logging to WARNING
+        logging.getLogger('googleapiclient').setLevel(logging.WARNING)
+        logging.getLogger('google.auth').setLevel(logging.WARNING)
 
     @staticmethod
     def valid_video_id(video_id: str) -> bool:
@@ -96,6 +100,12 @@ class YouTubeDataAPI:
         comment_count = video_data.comment_count
         unfetched_comments = True
 
+        self.logger.debug('Downloading comments...')
+
+        if 0 >= video_data.comment_count:
+            self.logger.debug(f'No comments to collect (comment count: {video_data.comment_count})')
+            return None
+
         with AstroProgress('Downloading comments', comment_count) as progress:
             while unfetched_comments:
                 # The API limits comment requests to 100 records
@@ -137,6 +147,8 @@ class YouTubeDataAPI:
         Collect video information provided a video ID.
         Return all data in a VideoData class for easy access.
         """
+        self.logger.debug('Collecting video metadata...')
+
         return_data = VideoData()
 
         request = self.youtube.videos().list(
@@ -154,7 +166,10 @@ class YouTubeDataAPI:
             return_data.channel_title = video_data['channelTitle']
             return_data.like_count = int(video_stats['likeCount'])
             return_data.view_count = int(video_stats['viewCount'])
-            return_data.comment_count = int(video_stats['commentCount'])
+            if 'commentCount' in video_stats:
+                return_data.comment_count = int(video_stats['commentCount'])
+            else:
+                return_data.comments_disabled = True
 
         except Exception as e:
             self.logger.error(str(e))

@@ -60,11 +60,14 @@ def main():
     logger = Logger(log_level)
     log = logger.get_logger()
 
-    # pull metadata and comments from specified youtube video
+    # collect metadata for provided video
     youtube = YouTubeDataAPI(logger, api_key)
     video_data = youtube.get_video_metadata(video_id)
 
-    # check local database to see if we have data about this video already
+    log.info(f'Video: {video_data.title}')
+    log.info(f'YouTube channel: {video_data.channel_title}')
+
+    # check local database for existing data on provided video
     db = AstroDB(logger, db_file)
     db_video_data = db.get_video_data(video_data.video_id)
 
@@ -73,23 +76,42 @@ def main():
         video_data.comment_count -= db_video_data.comment_count
 
         if 0 >= video_data.comment_count:
-            log.info('No new comments to fetch for provided video')
+            log.info('Comment data is current; no new comments to collect')
             # if comments have been deleted, video_data.comment_count may be a negative value
             # explicitly set comment_count to 0 here to avoid adding negative value to db
             video_data.comment_count = 0
             db.update_video_data(video_data)
             return
 
+    if video_data.comments_disabled:
+        log.info('Comments have been disabled for the provided video')
+        db.update_video_data(video_data)
+        return
+
+    # collect comments from the provided video
     comments_df = youtube.get_comments(video_data)
+
+    # update the video data in the local database
     db.update_video_data(video_data)
 
+    # gather sentiment data on the comments, adding data to the dataframe
     sa = SentimentAnalysis(logger)
     sa.add_sentiment_to_dataframe(comments_df)
 
     # commit dataframe to database
     db.insert_comment_dataframe(video_data, comments_df)
 
-    log.debug('Collected data preview: \n{}'.format(comments_df))
+    # if we're in debug mode, print a preview of the comment dataframe
+    if logger.level('debug'):
+        import pandas as pd
+        from IPython.display import display
+
+        log.debug('Preview of collected data:')
+
+        pd.set_option('display.max_rows', 10)
+        pd.set_option('display.width', 200)
+        pd.set_option('display.colheader_justify', 'center')
+        display(comments_df)
 
 
 if __name__ == "__main__":

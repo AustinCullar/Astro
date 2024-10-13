@@ -11,6 +11,7 @@ class VideoData:
     view_count: int
     like_count: int
     comment_count: int
+    comments_disabled: bool
 
     def __init__(
             self,
@@ -20,7 +21,8 @@ class VideoData:
             channel_title='',
             view_count=0,
             like_count=0,
-            comment_count=0):
+            comment_count=0,
+            comments_disabled=False):
 
         self.video_id = video_id
         self.video_title = video_title
@@ -29,3 +31,4 @@ class VideoData:
         self.view_count = view_count
         self.like_count = like_count
         self.comment_count = comment_count
+        self.comments_disabled = comments_disabled
