@@ -1,13 +1,11 @@
 """
 Functions for gathering data from YouTube.
 """
-import logging
 import pandas as pd
 import traceback
 import string
 
 from src.data_collection.data_structures import VideoData
-from src.progress import AstroProgress
 from googleapiclient.discovery import build
 
 
@@ -17,13 +15,9 @@ class YouTubeDataAPI:
     youtube = None
 
     def __init__(self, logger, api_key):
-        self.logger = logger.get_logger()
+        self.logger = logger
         self.api_key = api_key
         self.youtube = build('youtube', 'v3', developerKey=self.api_key)
-
-        # explicitly set googleapiclient and google.auth logging to WARNING
-        logging.getLogger('googleapiclient').setLevel(logging.WARNING)
-        logging.getLogger('google.auth').setLevel(logging.WARNING)
 
     @staticmethod
     def valid_video_id(video_id: str) -> bool:
@@ -106,12 +100,12 @@ class YouTubeDataAPI:
             self.logger.debug(f'No comments to collect (comment count: {video_data.comment_count})')
             return None
 
-        with AstroProgress('Downloading comments', comment_count) as progress:
+        with self.logger.progress_bar('Downloading comments', comment_count) as progress:
             while unfetched_comments:
                 # The API limits comment requests to 100 records
                 max_comments = min(100, comment_count)
 
-                self.logger.debug('collecting {} comments'.format(max_comments))
+                self.logger.debug('Collecting {} comments'.format(max_comments))
 
                 request = self.youtube.commentThreads().list(
                     part='snippet,replies',
@@ -129,7 +123,7 @@ class YouTubeDataAPI:
                     if 'nextPageToken' in response:  # there are more comments to fetch
                         page_token = response['nextPageToken']
                     else:
-                        self.logger.debug("comment collection complete")
+                        self.logger.debug("Comment collection complete")
                         unfetched_comments = False
 
                     progress.advance(comments_added)
@@ -161,7 +155,7 @@ class YouTubeDataAPI:
             video_stats = response['items'][0]['statistics']
 
             return_data.video_id = video_id
-            return_data.title = video_data['title']
+            return_data.video_title = video_data['title']
             return_data.channel_id = video_data['channelId']
             return_data.channel_title = video_data['channelTitle']
             return_data.like_count = int(video_stats['likeCount'])

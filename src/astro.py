@@ -4,11 +4,12 @@ leverage the YouTube Data API to gather data from YouTube videos.
 """
 import os
 import argparse
+import logging
 
 from dotenv import load_dotenv
 from data_collection.yt_data_api import YouTubeDataAPI
 from data_collection.sentiment import SentimentAnalysis
-from log import Logger
+from log import AstroLogger
 from astro_db import AstroDB
 
 
@@ -57,15 +58,17 @@ def main():
     db_file = args.db_file if args.db_file else os.getenv("DB_FILE")
 
     # set up logging
-    logger = Logger(log_level)
-    log = logger.get_logger()
+    logging.setLoggerClass(AstroLogger)
+    logger = logging.getLogger(__name__)
+    logger.astro_config(log_level)
+
+    logger.info('Collecting video data...')
 
     # collect metadata for provided video
     youtube = YouTubeDataAPI(logger, api_key)
     video_data = youtube.get_video_metadata(video_id)
 
-    log.info(f'Video: {video_data.title}')
-    log.info(f'YouTube channel: {video_data.channel_title}')
+    logger.print_object(video_data, title="Video data")
 
     # check local database for existing data on provided video
     db = AstroDB(logger, db_file)
@@ -76,7 +79,7 @@ def main():
         video_data.comment_count -= db_video_data.comment_count
 
         if 0 >= video_data.comment_count:
-            log.info('Comment data is current; no new comments to collect')
+            logger.info('Comment data is current; no new comments to collect')
             # if comments have been deleted, video_data.comment_count may be a negative value
             # explicitly set comment_count to 0 here to avoid adding negative value to db
             video_data.comment_count = 0
@@ -84,7 +87,7 @@ def main():
             return
 
     if video_data.comments_disabled:
-        log.info('Comments have been disabled for the provided video')
+        logger.info('Comments have been disabled for the provided video')
         db.update_video_data(video_data)
         return
 
@@ -101,17 +104,9 @@ def main():
     # commit dataframe to database
     db.insert_comment_dataframe(video_data, comments_df)
 
-    # if we're in debug mode, print a preview of the comment dataframe
-    if logger.level('debug'):
-        import pandas as pd
-        from IPython.display import display
+    logger.print_dataframe(comments_df, title='Comment data preview')
 
-        log.debug('Preview of collected data:')
-
-        pd.set_option('display.max_rows', 10)
-        pd.set_option('display.width', 200)
-        pd.set_option('display.colheader_justify', 'center')
-        display(comments_df)
+    logger.info('Data collection complete.')
 
 
 if __name__ == "__main__":

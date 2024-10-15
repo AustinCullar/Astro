@@ -16,7 +16,7 @@ class AstroDB:
     def __init__(self, logger, db_file: str):
         self.conn = sqlite3.connect(db_file)
         self.cursor = self.conn.cursor()
-        self.logger = logger.get_logger()
+        self.logger = logger
         self.create_videos_table()
 
         self.logger.debug('Initializing database...')

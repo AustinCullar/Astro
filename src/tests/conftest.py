@@ -1,10 +1,11 @@
 import pytest
 import json
 import googleapiclient
+import logging
 
 import pandas as pd
 from unittest.mock import MagicMock
-from src.log import Logger
+from src.log import AstroLogger
 import src.tests.test_api_responses as api_responses
 
 
@@ -31,7 +32,10 @@ def api_video_response():
 
 @pytest.fixture(scope='class')
 def logger():
-    return Logger('debug')
+    logging.setLoggerClass(AstroLogger)
+    astro_logger = logging.getLogger(__name__)
+    astro_logger.astro_config('debug')
+    return astro_logger
 
 
 @pytest.fixture(scope='function')
