@@ -2,10 +2,6 @@
 Tests for the Logging class.
 """
 import pytest
-import logging
-
-# Astro modules
-from src.log import AstroLogger
 
 
 class TestLogging:
@@ -27,7 +23,7 @@ class TestLogging:
 
         else:  # should assert error if invalid log level specified
             with pytest.raises(ValueError) as exception:
-                logger.astro_config(level) # this will call get_log_level()
+                logger.get_log_level(level)
 
             assert str(exception.value) == "Invalid logger level specified: {}".format(level)
 
