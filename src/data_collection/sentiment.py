@@ -6,14 +6,12 @@ import nltk
 from nltk.corpus import wordnet as wn
 from nltk.corpus import sentiwordnet as swn
 
-from src.progress import AstroProgress
-
 
 class SentimentAnalysis:
     logger = None
 
     def __init__(self, logger):
-        self.logger = logger.get_logger()
+        self.logger = logger
         self.nltk_init()
 
     def nltk_init(self):
@@ -35,7 +33,8 @@ class SentimentAnalysis:
         df['NSentiment'] = ''
 
         comment_count = len(df.index)
-        with AstroProgress('Calculating comment sentiment', comment_count) as progress:
+        with self.logger.progress_bar('Calculating comment sentiment',
+                                      comment_count) as progress:
             for index, row in df.iterrows():
                 sentiment = self.get_sentiment(row['comment'])
                 df.loc[index, 'PSentiment'] = sentiment[0]

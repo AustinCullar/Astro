@@ -16,8 +16,10 @@ class AstroDB:
     def __init__(self, logger, db_file: str):
         self.conn = sqlite3.connect(db_file)
         self.cursor = self.conn.cursor()
-        self.logger = logger.get_logger()
+        self.logger = logger
         self.create_videos_table()
+
+        self.logger.debug('Initializing database...')
 
     def get_db_conn(self):
         return self.conn
@@ -104,6 +106,8 @@ class AstroDB:
         """
         Create a new comment table for a specific video id.
         """
+        self.logger.debug('Creating comment table for new video...')
+
         if not video_data:
             raise ValueError('NULL video data')
 
@@ -148,6 +152,8 @@ class AstroDB:
         """
         Given a video id, return the associated comment table, if any.
         """
+        self.logger.debug(f'Searching for comment table for video ID: {video_id}')
+
         if not YouTubeDataAPI.valid_video_id(video_id):  # don't waste time querying database
             return ''
 
@@ -167,6 +173,8 @@ class AstroDB:
         """
         Given a video ID and a dataframe, commit the dataframe to the database.
         """
+        self.logger.debug('Inserting new comment dataframe...')
+
         if not video_data:
             raise ValueError('NULL video data')
 
@@ -186,6 +194,8 @@ class AstroDB:
         """
         Given a video ID, search the database for any existing records for this video.
         """
+        self.logger.debug('Retrieving video metadata from local database...')
+
         if not video_id:
             raise ValueError('Invalid video id')
 
@@ -193,7 +203,7 @@ class AstroDB:
         db_record = self.cursor.fetchone()
 
         if not db_record:
-            self.logger.debug('video record not found in database')
+            self.logger.debug('Video record not found in database')
             return None
 
         video_data = VideoData(
@@ -210,6 +220,8 @@ class AstroDB:
         """
         Update the Videos table with the new metadata.
         """
+        self.logger.debug('Updating video metadata...')
+
         self.cursor.execute(f"UPDATE Videos SET \
                 comment_count=comment_count+{video_data.comment_count}, \
                 likes={video_data.like_count}, \

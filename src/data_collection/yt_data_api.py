@@ -1,13 +1,11 @@
 """
 Functions for gathering data from YouTube.
 """
-
 import pandas as pd
 import traceback
 import string
 
 from src.data_collection.data_structures import VideoData
-from src.progress import AstroProgress
 from googleapiclient.discovery import build
 
 
@@ -17,7 +15,7 @@ class YouTubeDataAPI:
     youtube = None
 
     def __init__(self, logger, api_key):
-        self.logger = logger.get_logger()
+        self.logger = logger
         self.api_key = api_key
         self.youtube = build('youtube', 'v3', developerKey=self.api_key)
 
@@ -96,12 +94,18 @@ class YouTubeDataAPI:
         comment_count = video_data.comment_count
         unfetched_comments = True
 
-        with AstroProgress('Downloading comments', comment_count) as progress:
+        self.logger.debug('Downloading comments...')
+
+        if 0 >= video_data.comment_count:
+            self.logger.debug(f'No comments to collect (comment count: {video_data.comment_count})')
+            return None
+
+        with self.logger.progress_bar('Downloading comments', comment_count) as progress:
             while unfetched_comments:
                 # The API limits comment requests to 100 records
                 max_comments = min(100, comment_count)
 
-                self.logger.debug('collecting {} comments'.format(max_comments))
+                self.logger.debug('Collecting {} comments'.format(max_comments))
 
                 request = self.youtube.commentThreads().list(
                     part='snippet,replies',
@@ -119,7 +123,7 @@ class YouTubeDataAPI:
                     if 'nextPageToken' in response:  # there are more comments to fetch
                         page_token = response['nextPageToken']
                     else:
-                        self.logger.debug("comment collection complete")
+                        self.logger.debug("Comment collection complete")
                         unfetched_comments = False
 
                     progress.advance(comments_added)
@@ -137,6 +141,8 @@ class YouTubeDataAPI:
         Collect video information provided a video ID.
         Return all data in a VideoData class for easy access.
         """
+        self.logger.debug('Collecting video metadata...')
+
         return_data = VideoData()
 
         request = self.youtube.videos().list(
@@ -149,12 +155,15 @@ class YouTubeDataAPI:
             video_stats = response['items'][0]['statistics']
 
             return_data.video_id = video_id
-            return_data.title = video_data['title']
+            return_data.video_title = video_data['title']
             return_data.channel_id = video_data['channelId']
             return_data.channel_title = video_data['channelTitle']
             return_data.like_count = int(video_stats['likeCount'])
             return_data.view_count = int(video_stats['viewCount'])
-            return_data.comment_count = int(video_stats['commentCount'])
+            if 'commentCount' in video_stats:
+                return_data.comment_count = int(video_stats['commentCount'])
+            else:
+                return_data.comments_disabled = True
 
         except Exception as e:
             self.logger.error(str(e))
