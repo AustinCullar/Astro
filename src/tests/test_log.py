@@ -4,6 +4,7 @@ Tests for the Logging class.
 import pytest
 from src.tests.test_objects import test_video_data
 
+
 class TestLogging:
     @pytest.mark.parametrize('level', ['debug', 'info', 'warn', 'error', 'asdf'])
     def test_get_log_level(self, logger, level):
