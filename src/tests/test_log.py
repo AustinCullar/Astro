@@ -2,7 +2,7 @@
 Tests for the Logging class.
 """
 import pytest
-
+from src.tests.test_objects import test_video_data
 
 class TestLogging:
     @pytest.mark.parametrize('level', ['debug', 'info', 'warn', 'error', 'asdf'])
@@ -27,12 +27,11 @@ class TestLogging:
 
             assert str(exception.value) == "Invalid logger level specified: {}".format(level)
 
-    @pytest.mark.parametrize('obj', [])
-    @pytest.mark.parametrize('title', [])
+    @pytest.mark.parametrize('obj', test_video_data)
+    @pytest.mark.parametrize('title', ['title1', 'title-2', 'title_3'])
     def test_print_object(self, logger, obj, title):
-        pass
+        logger.print_object(obj, title=title)
 
-    @pytest.mark.parametrize('df', [])
-    @pytest.mark.parametrize('title', [])
-    def test_print_dataframe(self, logger, df, title):
-        pass
+    @pytest.mark.parametrize('title', ['title1', 'title-2', 'title_3'])
+    def test_print_dataframe(self, logger, comment_dataframe, title):
+        logger.print_dataframe(comment_dataframe, title=title)

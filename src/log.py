@@ -103,6 +103,9 @@ class AstroLogger(logging.Logger):
         """
         Print the attributes of the provided object. Useful for debugging.
         """
+        if obj is None:
+            return
+
         # only print objects in debug or info mode
         if self.log_level > logging.INFO:
             return
