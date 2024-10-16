@@ -98,6 +98,7 @@ class AstroDB:
             views INT, \
             likes INT, \
             comment_count INT, \
+            filtered_comment_count INT, \
             comment_table TEXT)")
 
         self.conn.commit()
@@ -116,13 +117,15 @@ class AstroDB:
 
         if not video_data.channel_title:
             # Missing the channel title is not critical, but should be investigated
-            self.logger.warn('Missing channel title')
+            self.logger.warning('Missing channel title')
 
         table_name = self.create_unique_table_name()
         assert table_name, "Failed to create unique comment table in database"
 
         query = f"INSERT INTO Videos \
-                (channel_title, channel_id, video_id, views, likes, comment_count, comment_table) \
+                (channel_title, channel_id, video_id, \
+                views, likes, comment_count, filtered_comment_count, \
+                comment_table) \
                 VALUES ( \
                 '{video_data.channel_title}', \
                 '{video_data.channel_id}', \
@@ -130,6 +133,7 @@ class AstroDB:
                 '{video_data.view_count}', \
                 '{video_data.like_count}', \
                 '{video_data.comment_count}', \
+                '{video_data.filtered_comment_count}', \
                 '{table_name}')"
 
         self.cursor.execute(query)
@@ -203,7 +207,7 @@ class AstroDB:
         db_record = self.cursor.fetchone()
 
         if not db_record:
-            self.logger.debug('Video record not found in database')
+            self.logger.debug(f'Video record not found in database for id {video_id}')
             return None
 
         video_data = VideoData(
@@ -212,7 +216,8 @@ class AstroDB:
                 video_id=db_record[3],
                 like_count=db_record[4],
                 view_count=db_record[5],
-                comment_count=db_record[6])
+                comment_count=db_record[6],
+                filtered_comment_count=db_record[7])
 
         return video_data
 
@@ -224,6 +229,7 @@ class AstroDB:
 
         self.cursor.execute(f"UPDATE Videos SET \
                 comment_count=comment_count+{video_data.comment_count}, \
+                filtered_comment_count=filtered_comment_count+{video_data.filtered_comment_count}, \
                 likes={video_data.like_count}, \
                 views={video_data.view_count} \
                 WHERE video_id='{video_data.video_id}'")

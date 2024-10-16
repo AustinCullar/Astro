@@ -132,6 +132,10 @@ class YouTubeDataAPI:
                     self.logger.error(str(e))
                     self.logger.error(traceback.format_exc())
 
+            # get filtered comment count by subtracting our collected count from our expected count
+            filtered_comments = video_data.comment_count - len(comment_dataframe.index)
+            if 0 < filtered_comments:
+                video_data.filtered_comment_count = filtered_comments
             progress.complete()
 
         return comment_dataframe
