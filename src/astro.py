@@ -104,6 +104,12 @@ def main():
     # commit dataframe to database
     db.insert_comment_dataframe(video_data, comments_df)
 
+    # print filtered comment information
+    db_video_data = db.get_video_data(video_data.video_id)
+    logger.info('Video has filtered ' +
+                f'{db_video_data.filtered_comment_count/db_video_data.comment_count*100:.2f}% ' +
+                'of comments')
+
     logger.print_dataframe(comments_df, title='Comment data preview')
 
     logger.info('Data collection complete.')
