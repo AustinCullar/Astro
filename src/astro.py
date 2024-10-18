@@ -11,6 +11,8 @@ from data_collection.yt_data_api import YouTubeDataAPI
 from data_collection.sentiment import SentimentAnalysis
 from log import AstroLogger
 from astro_db import AstroDB
+from theme import AstroTheme
+from rich_argparse import ArgumentDefaultsRichHelpFormatter
 
 
 def extract_video_id_from_url(url: str) -> str:
@@ -27,26 +29,31 @@ def extract_video_id_from_url(url: str) -> str:
     return video_id
 
 
-def parse_args():
+def parse_args(astro_theme):
     """
     Argument parsing logic. Returns the arguments parsed from the CLI
     """
+    description = "A tool for YouTube data collection."
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=description,
+                                     formatter_class=ArgumentDefaultsRichHelpFormatter)
 
     parser.add_argument("youtube_url", type=str, help="youtube video URL")
     parser.add_argument("-l", "--log", type=str, choices=['debug', 'info', 'warn', 'error'],
-                        help='Set the logging level')
+                        help='Set the logging level', default='info')
     parser.add_argument("--api-key", type=str, help="YouTube Data API key")
-    parser.add_argument("--db-file", type=str, help="database filename")
+    parser.add_argument("--db-file", type=str, help="database filename", default='astro.db')
     args = parser.parse_args()
 
     return args
 
 
 def main():
+    # load astro color scheme
+    astro_theme = AstroTheme()
+
     # parse arguments
-    args = parse_args()
+    args = parse_args(astro_theme)
     video_id = extract_video_id_from_url(args.youtube_url)
 
     # load environment variables
@@ -60,7 +67,7 @@ def main():
     # set up logging
     logging.setLoggerClass(AstroLogger)
     logger = logging.getLogger(__name__)
-    logger.astro_config(log_level)
+    logger.astro_config(log_level, astro_theme)
 
     logger.info('Collecting video data...')
 

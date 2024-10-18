@@ -20,7 +20,7 @@ class AstroLogger(logging.Logger):
     astro_theme: Theme
     progress: AstroProgress
 
-    def astro_config(self, log_level_str: str):
+    def astro_config(self, log_level_str: str, astro_theme):
         """
         Custom logging config.
         """
@@ -29,21 +29,10 @@ class AstroLogger(logging.Logger):
 
         self.setLevel(self.log_level)
 
-        # define astro color theme
-        self.astro_text_color = 'sky_blue3'
-        self.astro_theme = Theme({
-            "log.message": self.astro_text_color,
-            "logging.level.info": 'blue_violet',
-            "logging.level.warning": "orange_red1",
-            "logging.level.error": "red",
-            "bar.finished": "green",
-            "progress.elapsed": self.astro_text_color,
-            "progress.remaining": self.astro_text_color,
-            "progress.percentage": "green",
-            "table.title": "bold " + self.astro_text_color})
+        self.astro_theme = astro_theme
 
         # create console using the asto theme
-        self.console = Console(theme=self.astro_theme)
+        self.console = self.astro_theme.get_console()
 
         # configure logging
         logging.basicConfig(format='%(message)s',
@@ -52,9 +41,9 @@ class AstroLogger(logging.Logger):
                                                   console=self.console)])
 
         # suppress google logs
-        self.suppress_logs('google', logging.WARNING)
+        self.__suppress_logs('google', logging.WARNING)
 
-    def suppress_logs(self, name, level):
+    def __suppress_logs(self, name, level):
         """
         Suppress logging of external modules.
         """
@@ -67,7 +56,7 @@ class AstroLogger(logging.Logger):
         """
         Display a progress bar on the console.
         """
-        self.progress = AstroProgress(task_str, steps, console=self.console, style=self.astro_text_color)
+        self.progress = AstroProgress(task_str, steps, console=self.console)
         return self.progress
 
     def get_log_level(self, log_level: str) -> int:
@@ -87,14 +76,15 @@ class AstroLogger(logging.Logger):
 
         return log_level
 
-    def rich_table(self, title=''):
+    def __rich_table(self, title=''):
         """
         Create a rich.Table object using the default project theme/style.
         """
-        table = Table(style=self.astro_text_color,
-                      border_style=self.astro_text_color,
-                      header_style=self.astro_text_color,
-                      row_styles=[self.astro_text_color],
+        text_color = self.astro_theme.get_style()
+        table = Table(style=text_color,
+                      border_style=text_color,
+                      header_style=text_color,
+                      row_styles=[text_color],
                       title=title)
 
         return table
@@ -110,7 +100,7 @@ class AstroLogger(logging.Logger):
         if self.log_level > logging.INFO:
             return
 
-        table = self.rich_table(title)
+        table = self.__rich_table(title)
         table.add_column("Attribute")
         table.add_column("Value")
 
@@ -130,7 +120,7 @@ class AstroLogger(logging.Logger):
         # ensure dataframe contains only string values
         df = df.astype(str)
 
-        table = self.rich_table(title)
+        table = self.__rich_table(title)
 
         # add dataframe columns
         for col in df.columns:

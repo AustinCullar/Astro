@@ -10,7 +10,8 @@ setup(
     py_modules=[
         "src/log",
         "src/astro_db",
-        "src/progress"],
+        "src/progress",
+        "src/theme"],
 
     # Packages required to run the app
     install_requires=[
