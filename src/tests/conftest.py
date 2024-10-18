@@ -4,9 +4,10 @@ import googleapiclient
 import logging
 
 import pandas as pd
+import src.tests.test_api_responses as api_responses
 from unittest.mock import MagicMock
 from src.log import AstroLogger
-import src.tests.test_api_responses as api_responses
+from src.theme import AstroTheme
 
 
 @pytest.fixture(scope='class')
@@ -31,10 +32,15 @@ def api_video_response():
 
 
 @pytest.fixture(scope='class')
-def logger():
+def astro_theme():
+    return AstroTheme()
+
+
+@pytest.fixture(scope='class')
+def logger(astro_theme):
     logging.setLoggerClass(AstroLogger)
     astro_logger = logging.getLogger(__name__)
-    astro_logger.astro_config('debug')
+    astro_logger.astro_config('debug', astro_theme)
     return astro_logger
 
 

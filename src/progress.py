@@ -15,7 +15,7 @@ class AstroProgress(Progress):
     total_steps: int
     task: int
 
-    def __init__(self, task_str: str, steps: int, console=None, style=None):
+    def __init__(self, task_str: str, steps: int, console=None):
         self.task_str = task_str
         self.total_steps = steps
 
@@ -23,13 +23,13 @@ class AstroProgress(Progress):
             TextColumn("{task.description} [progress.percentage]{task.percentage:>3.0f}%"),
             BarColumn(),
             MofNCompleteColumn(),
-            TextColumn("•", style=style),
+            TextColumn("•", style=console.get_style('log.message')),
             TimeElapsedColumn(),
-            TextColumn("•", style=style),
+            TextColumn("•", style=console.get_style('log.message')),
             TimeRemainingColumn(),
             console=console)
 
-        self.task = super().add_task(f'[{style}]' + task_str, total=self.total_steps)
+        self.task = super().add_task(f"[{console.get_style('log.message')}]" + task_str, total=self.total_steps)
 
     def advance(self, steps: int):
         super().update(self.task, advance=steps)
