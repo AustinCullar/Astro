@@ -124,7 +124,7 @@ class YouTubeDataAPI:
                     response = request.execute()
                     if self.log_json:
                         with self.logger.log_file_only():
-                            self.logger.debug(json.dumps(response, indent=4))
+                            self.logger.info(json.dumps(response, indent=4))
 
                     comment_dataframe, comments_added = self.parse_comment_api_response(response, comment_dataframe)
                     if 'nextPageToken' in response:  # there are more comments to fetch
@@ -164,7 +164,7 @@ class YouTubeDataAPI:
             response = request.execute()
             if self.log_json:
                 with self.logger.log_file_only():
-                    self.logger.debug(json.dumps(response, indent=4))
+                    self.logger.info(json.dumps(response, indent=4))
 
             video_data = response['items'][0]['snippet']
             video_stats = response['items'][0]['statistics']
