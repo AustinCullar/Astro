@@ -28,10 +28,9 @@ class TestLogging:
 
             assert str(exception.value) == "Invalid logger level specified: {}".format(level)
 
-    @pytest.mark.parametrize('obj', test_video_data)
-    @pytest.mark.parametrize('title', ['title1', 'title-2', 'title_3'])
-    def test_print_object(self, logger, obj, title):
-        logger.print_object(obj, title=title)
+    @pytest.mark.parametrize('video_data', test_video_data)
+    def test_print_video_data(self, logger, video_data):
+        logger.print_video_data(video_data)
 
     @pytest.mark.parametrize('title', ['title1', 'title-2', 'title_3'])
     def test_print_dataframe(self, logger, comment_dataframe, title):

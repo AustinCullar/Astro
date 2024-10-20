@@ -7,7 +7,7 @@ from rich.logging import RichHandler
 from rich.console import Console
 from rich.table import Table
 from rich.theme import Theme
-from rich import print as rprint
+from contextlib import contextmanager
 
 from src.progress import AstroProgress
 
@@ -19,26 +19,42 @@ class AstroLogger(logging.Logger):
     astro_text_color: str
     astro_theme: Theme
     progress: AstroProgress
+    log_file: str
+    console_handler: RichHandler
+    file_handler: logging.FileHandler
 
-    def astro_config(self, log_level_str: str, astro_theme):
+    def astro_config(self, log_level_str: str, astro_theme, log_file='astro_log.txt'):
         """
         Custom logging config.
         """
+        # set log level
         self.log_level_str = log_level_str
         self.log_level = self.get_log_level(log_level_str)
-
         self.setLevel(self.log_level)
 
+        # set color theme
         self.astro_theme = astro_theme
 
         # create console using the asto theme
         self.console = self.astro_theme.get_console()
 
+        # create log handlers
+        self.log_file = log_file
+        self.console_handler = RichHandler(rich_tracebacks=True, console=self.console)
+        self.file_handler = logging.FileHandler(self.log_file)
+        log_handlers = [self.console_handler, self.file_handler]
+
+        # configure formatting for file handler
+        file_formatter = logging.Formatter(
+                '%(asctime)s:%(levelname)6s: %(filename)14s:%(lineno)-3d %(message)-60s',
+                '%Y-%m-%d %H:%M:%S')
+
+        self.file_handler.setFormatter(file_formatter)
+
         # configure logging
         logging.basicConfig(format='%(message)s',
                             level=self.log_level,
-                            handlers=[RichHandler(rich_tracebacks=True,
-                                                  console=self.console)])
+                            handlers=log_handlers)
 
         # suppress google logs
         self.__suppress_logs('google', logging.WARNING)
@@ -89,25 +105,18 @@ class AstroLogger(logging.Logger):
 
         return table
 
-    def print_object(self, obj, title=''):
+    def print_video_data(self, video_data):
         """
-        Print the attributes of the provided object. Useful for debugging.
+        Print VideoData object.
         """
-        if obj is None:
+        if video_data is None:
             return
 
-        # only print objects in debug or info mode
-        if self.log_level > logging.INFO:
-            return
+        exclude_fields = ['filtered_comment_count']
 
-        table = self.__rich_table(title)
-        table.add_column("Attribute")
-        table.add_column("Value")
-
-        for attr, value in obj.__dict__.items():
-            table.add_row(attr, str(value))
-
-        self.console.print(table)
+        for attr, value in video_data.__dict__.items():
+            if attr not in exclude_fields:
+                self.info(f'{attr:>20}: {str(value)}')
 
     def print_dataframe(self, df, title=''):
         """
@@ -145,8 +154,15 @@ class AstroLogger(logging.Logger):
 
         self.console.print(table)
 
-    def print_json(self, json_obj):
+    @contextmanager
+    def log_file_only(self):
         """
-        Easy way to print properly formatted json.
+        Provides a context in which logging will only go to the log file.
         """
-        rprint(json_obj)
+        # temporarily raise log level of console handler
+        self.console_handler.setLevel(logging.CRITICAL)
+
+        yield
+
+        # restore original log level
+        self.console_handler.setLevel(self.log_level)

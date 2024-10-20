@@ -38,11 +38,14 @@ def parse_args(astro_theme):
     parser = argparse.ArgumentParser(description=description,
                                      formatter_class=ArgumentDefaultsRichHelpFormatter)
 
-    parser.add_argument("youtube_url", type=str, help="youtube video URL")
-    parser.add_argument("-l", "--log", type=str, choices=['debug', 'info', 'warn', 'error'],
+    parser.add_argument('youtube_url', type=str, help='youtube video URL')
+    parser.add_argument('-l', '--log', type=str, choices=['debug', 'info', 'warn', 'error'],
                         help='Set the logging level', default='info')
-    parser.add_argument("--api-key", type=str, help="YouTube Data API key")
-    parser.add_argument("--db-file", type=str, help="database filename", default='astro.db')
+    parser.add_argument('--api-key', type=str, help='YouTube Data API key')
+    parser.add_argument('--db-file', type=str, help='database filename', default='astro.db')
+    parser.add_argument('--log-file', type=str, help='log output to specified file', default='astro_log.txt')
+    parser.add_argument('-j', '--log-json', type=bool, help='log json API responses',
+                        default=False, action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
 
     return args
@@ -63,19 +66,19 @@ def main():
     log_level = args.log if args.log else os.getenv("LOG_LEVEL")
     api_key = args.api_key if args.api_key else os.getenv("API_KEY")
     db_file = args.db_file if args.db_file else os.getenv("DB_FILE")
+    log_file = args.log_file if args.log_file else os.getenv("LOG_FILE")
+    log_json = args.log_json if args.log_json else os.getenv("LOG_JSON")
 
     # set up logging
     logging.setLoggerClass(AstroLogger)
     logger = logging.getLogger(__name__)
-    logger.astro_config(log_level, astro_theme)
-
-    logger.info('Collecting video data...')
+    logger.astro_config(log_level, astro_theme, log_file=log_file)
 
     # collect metadata for provided video
-    youtube = YouTubeDataAPI(logger, api_key)
+    youtube = YouTubeDataAPI(logger, api_key, log_json)
     video_data = youtube.get_video_metadata(video_id)
 
-    logger.print_object(video_data, title="Video data")
+    logger.print_video_data(video_data)
 
     # check local database for existing data on provided video
     db = AstroDB(logger, db_file)

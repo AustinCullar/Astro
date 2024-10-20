@@ -4,6 +4,7 @@ Functions for gathering data from YouTube.
 import pandas as pd
 import traceback
 import string
+import json
 
 from src.data_collection.data_structures import VideoData
 from googleapiclient.discovery import build
@@ -13,10 +14,12 @@ class YouTubeDataAPI:
     logger = None
     api_key = None
     youtube = None
+    log_json = False
 
-    def __init__(self, logger, api_key):
+    def __init__(self, logger, api_key, log_json=False):
         self.logger = logger
         self.api_key = api_key
+        self.log_json = log_json
         self.youtube = build('youtube', 'v3', developerKey=self.api_key)
 
     @staticmethod
@@ -119,6 +122,10 @@ class YouTubeDataAPI:
 
                 try:
                     response = request.execute()
+                    if self.log_json:
+                        with self.logger.log_file_only():
+                            self.logger.info(json.dumps(response, indent=4))
+
                     comment_dataframe, comments_added = self.parse_comment_api_response(response, comment_dataframe)
                     if 'nextPageToken' in response:  # there are more comments to fetch
                         page_token = response['nextPageToken']
@@ -155,6 +162,10 @@ class YouTubeDataAPI:
 
         try:
             response = request.execute()
+            if self.log_json:
+                with self.logger.log_file_only():
+                    self.logger.info(json.dumps(response, indent=4))
+
             video_data = response['items'][0]['snippet']
             video_stats = response['items'][0]['statistics']
 
