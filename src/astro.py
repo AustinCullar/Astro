@@ -80,21 +80,8 @@ def main():
 
     logger.print_video_data(video_data)
 
-    # check local database for existing data on provided video
+    # connect to local database
     db = AstroDB(logger, db_file)
-    db_video_data = db.get_video_data(video_data.video_id)
-
-    if db_video_data:  # we already have a database table for this video
-        # determine how many new comments we need to fetch
-        video_data.comment_count -= db_video_data.comment_count
-
-        if 0 >= video_data.comment_count:
-            logger.info('Comment data is current; no new comments to collect')
-            # if comments have been deleted, video_data.comment_count may be a negative value
-            # explicitly set comment_count to 0 here to avoid adding negative value to db
-            video_data.comment_count = 0
-            db.update_video_data(video_data)
-            return
 
     if video_data.comments_disabled:
         logger.info('Comments have been disabled for the provided video')
@@ -121,7 +108,6 @@ def main():
                 'of comments')
 
     logger.print_dataframe(comments_df, title='Comment data preview')
-
     logger.info('Data collection complete.')
 
 

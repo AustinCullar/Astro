@@ -137,12 +137,12 @@ class AstroLogger(logging.Logger):
 
         # add dataframe rows
         for row in df.values:
-            comment_len = len(row[0])
+            comment_len = len(row[1])
 
             # limit comment preview to `max_comment_len` characters
-            row[0] = row[0][:max_comment_len]
+            row[1] = row[1][:max_comment_len]
             if comment_len > max_comment_len:
-                row[0] += '...'
+                row[1] += '...'
 
             table.add_row(*row)
 

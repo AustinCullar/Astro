@@ -54,17 +54,19 @@ class YouTubeDataAPI:
             df = comment_dataframe
         else:  # create new dataframe
             df_index = 0
-            df = pd.DataFrame(columns=['comment', 'user', 'date'])
+            df = pd.DataFrame(columns=['comment_id', 'comment', 'user', 'date', 'visible'])
 
         for item in response['items']:
             has_replies = 0 != item['snippet']['totalReplyCount']
 
+            comment_id = item['id']
             comment_info = item['snippet']['topLevelComment']['snippet']
             comment = comment_info['textDisplay']
             user = comment_info['authorDisplayName']
             date = comment_info['publishedAt']
+            visible = True  # this is used to track comment visibility changes
 
-            df.loc[df_index] = [comment, user, date]
+            df.loc[df_index] = [comment_id, comment, user, date, visible]
             df_index += 1
             comment_count += 1
 
@@ -72,11 +74,12 @@ class YouTubeDataAPI:
                 for reply in item['replies']['comments']:
                     reply_data = reply['snippet']
 
+                    comment_id = reply['id']
                     comment = reply_data['textDisplay']
                     user = reply_data['authorDisplayName']
                     date = reply_data['publishedAt']
 
-                    df.loc[df_index] = [comment, user, date]
+                    df.loc[df_index] = [comment_id, comment, user, date, visible]
                     df_index += 1
                     comment_count += 1
 
@@ -94,31 +97,22 @@ class YouTubeDataAPI:
 
         comment_dataframe = None
         page_token = ''
-        comment_count = video_data.comment_count
         unfetched_comments = True
 
         self.logger.debug('Downloading comments...')
 
         if 0 >= video_data.comment_count:
-            self.logger.debug(f'No comments to collect (comment count: {video_data.comment_count})')
+            self.logger.error(f'Received bad comment count: {video_data.comment_count}')
             return None
 
-        with self.logger.progress_bar('Downloading comments', comment_count) as progress:
+        with self.logger.progress_bar('Downloading comments', video_data.comment_count) as progress:
             while unfetched_comments:
-                # The API limits comment requests to 100 records
-                max_comments = min(100, comment_count)
-
-                self.logger.debug('Collecting {} comments'.format(max_comments))
-
                 request = self.youtube.commentThreads().list(
                     part='snippet,replies',
                     videoId=video_data.video_id,
                     pageToken=page_token,
-                    maxResults=max_comments,
+                    maxResults=100,  # API limit is 100
                     textFormat='plainText')
-
-                comment_count -= max_comments
-                unfetched_comments = True if comment_count > 0 else False
 
                 try:
                     response = request.execute()
