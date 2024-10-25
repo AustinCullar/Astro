@@ -15,10 +15,14 @@ def parametrize_api_comment_response(
         publishedAt='',
         authorDisplayName='',
         replyTextDisplay='',
-        replyAuthorDisplayName=''):
+        replyAuthorDisplayName='',
+        commentID=''):
 
     if videoId:
         json_response['items'][0]['snippet']['videoId'] = videoId
+
+    if commentID:
+        json_response['items'][0]['id'] = commentID
 
     if textDisplay:
         json_response['items'][0]['snippet']['topLevelComment']['snippet']['textDisplay'] = textDisplay
@@ -70,6 +74,10 @@ class TestYouTubeDataAPI:
     @pytest.mark.parametrize('authorDisplayName', ['@test_user1', '@user-1234', '@best.youtuber'])
     @pytest.mark.parametrize('replyTextDisplay', ['reply text', 'hello 12345', 'test/reply'])
     @pytest.mark.parametrize('replyAuthorDisplayName', ['@test_replier1', '@test-replier1234', '@best.replier'])
+    @pytest.mark.parametrize('commentID',
+                             ['UgyMLcxXS1Id2SaBuJd4AaABAg',
+                              'UgwJuUmFZtOgkjrCrlp4AaABAg',
+                              'UgwJuUmFZtOgkjrCrlp4AaABAg.A9Y4JkqJXpPA9Y4Z0_I_BA'])
     def test_get_comments(
             self,
             logger,
@@ -79,7 +87,8 @@ class TestYouTubeDataAPI:
             publishedAt,
             authorDisplayName,
             replyTextDisplay,
-            replyAuthorDisplayName):
+            replyAuthorDisplayName,
+            commentID):
 
         youtube = YouTubeDataAPI(logger, 'test_apikey')
 
@@ -98,18 +107,20 @@ class TestYouTubeDataAPI:
             publishedAt=publishedAt,
             authorDisplayName=authorDisplayName,
             replyTextDisplay=replyTextDisplay,
-            replyAuthorDisplayName=replyAuthorDisplayName)
+            replyAuthorDisplayName=replyAuthorDisplayName,
+            commentID=commentID)
 
         df = youtube.get_comments(video_data)
 
         assert not df.empty
 
         """
-        The test data will only generate 2 rows in the dataframe:
+        The test data will only create 2 rows in the dataframe:
         one for the parent comment and one for the reply.
         """
         for index, row in df.iterrows():
             if index == 0:  # parent comment
+                assert commentID == row['comment_id']
                 assert textDisplay == row['comment']
                 assert publishedAt == row['date']
                 assert authorDisplayName == row['user']
