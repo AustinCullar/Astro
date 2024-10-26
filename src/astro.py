@@ -15,20 +15,6 @@ from theme import AstroTheme
 from rich_argparse import ArgumentDefaultsRichHelpFormatter
 
 
-def extract_video_id_from_url(url: str) -> str:
-    """
-    Grab the video ID from the provided URL. The ID will come after
-    the substring 'v=' in the URL, so I just split the string on that
-    substring and return the latter half.
-    """
-
-    video_id = url.split('v=')[1]
-    if not YouTubeDataAPI.valid_video_id(video_id):
-        raise ValueError('Invalid video URL provided')
-
-    return video_id
-
-
 def parse_args(astro_theme):
     """
     Argument parsing logic. Returns the arguments parsed from the CLI
@@ -57,7 +43,6 @@ def main():
 
     # parse arguments
     args = parse_args(astro_theme)
-    video_id = extract_video_id_from_url(args.youtube_url)
 
     # load environment variables
     load_dotenv()
@@ -76,7 +61,7 @@ def main():
 
     # collect metadata for provided video
     youtube = YouTubeDataAPI(logger, api_key, log_json)
-    video_data = youtube.get_video_metadata(video_id)
+    video_data = youtube.get_video_metadata(args.youtube_url)
 
     logger.print_video_data(video_data)
 

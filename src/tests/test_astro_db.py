@@ -7,7 +7,6 @@ from unittest.mock import MagicMock
 # Astro modules
 from src.astro_db import AstroDB
 from src.tests.test_objects import test_video_data
-from src.data_collection.yt_data_api import YouTubeDataAPI
 from src.tests.astro_mocks import MockSqlite3Connection
 
 
@@ -41,14 +40,8 @@ def database_fault(mock_sqlite3_connect, logger):
     """
     Force the database queries to return None
     """
-    valid_video_id_orig = YouTubeDataAPI.valid_video_id
-
-    YouTubeDataAPI.valid_video_id = MagicMock(return_value=True)
     mock_sqlite3_connect.set_return_value(None)
-
-    yield AstroDB(logger, 'test2.db')
-
-    YouTubeDataAPI.valid_video_id = valid_video_id_orig
+    return AstroDB(logger, 'test2.db')
 
 
 class TestAstroDB:
@@ -71,19 +64,13 @@ class TestAstroDB:
         return row_count
 
     def __insert_dataframe_exception(self, astro_db, comment_dataframe, video_data) -> bool:
-        bad_input = not video_data or \
-                    not YouTubeDataAPI.valid_video_id(video_data.video_id)
-
-        if not bad_input:
+        if video_data and video_data.video_id:
             return False
 
         # expect an exception
         with pytest.raises(ValueError) as exception:
             astro_db.insert_comment_dataframe(video_data, comment_dataframe)
-            if not video_data:
-                assert str(exception.value) == 'NULL video data'
-            elif not YouTubeDataAPI.valid_video_id(video_data.video_id):
-                assert str(exception.value) == 'Invalid video id'
+            assert str(exception.value) == 'Invalid video id'
 
         return True
 
@@ -105,15 +92,12 @@ class TestAstroDB:
 
         bad_input = not video_data or \
             not video_data.channel_id or \
-            not YouTubeDataAPI.valid_video_id(video_data.video_id)
+            not video_data.video_id
 
         if bad_input:  # expect an exception
             with pytest.raises(ValueError) as exception:
                 comment_table_name = astro_db._AstroDB__create_comment_table_for_video(video_data)
-                if not video_data:
-                    assert str(exception.value) == 'NULL video data'
-                elif not video_data.channel_id or not video_data.video_id:
-                    assert str(exception.value) == 'Invalid video data'
+                assert str(exception.value) == 'Invalid video data'
         else:
             # create entry in Videos table along with a new comment table for that video
             comment_table_name = astro_db._AstroDB__create_comment_table_for_video(video_data)
@@ -152,32 +136,6 @@ class TestAstroDB:
         else:
             name = astro_db._AstroDB__create_unique_table_name()
             assert name == table_names[1]
-
-    @pytest.mark.parametrize('fail_database_query', [True, False])
-    @pytest.mark.parametrize('video_id', [video_data.video_id for video_data in test_video_data if video_data])
-    def test_get_comment_table_for(self, request, astro_db, fail_database_query, video_id):
-        if fail_database_query:
-            # force database to return None in order to test lookup failure path
-            astro_db = request.getfixturevalue('database_fault')
-
-        # consider this a normal run if we have a valid video_id and no expected database failure
-        normal_run = YouTubeDataAPI.valid_video_id(video_id) and not fail_database_query
-
-        # verify that AstroDB finds the comment table
-        table_name = astro_db._AstroDB__get_comment_table_for(video_id)
-
-        assert table_name if normal_run else not table_name
-
-        # verify that the database agrees with AstroDB
-        conn = astro_db.get_db_conn()
-        cursor = conn.cursor()
-
-        cursor.execute(f"SELECT comment_table FROM Videos WHERE video_id='{video_id}'")
-        database_table = cursor.fetchone()
-
-        assert database_table if normal_run else not database_table
-        if normal_run:
-            assert database_table[0] == table_name
 
     @pytest.mark.parametrize('video_data', test_video_data)
     def test_insert_comment_dataframe(self, astro_db, video_data, comment_dataframe):
@@ -219,18 +177,24 @@ class TestAstroDB:
         conn = astro_db.get_db_conn()
         cursor = conn.cursor()
 
-        if YouTubeDataAPI.valid_video_id(video_data.video_id):
+        if not video_data.video_id:
+            with pytest.raises(ValueError) as exception:
+                db_video_data = astro_db.get_video_data(video_data.video_id)
+                assert str(exception.value) == 'Invalid video id'
+        else:
+            db_video_data = astro_db.get_video_data(video_data.video_id)
+
             cursor.execute(f"SELECT * from Videos WHERE video_id='{video_data.video_id}'")
             db_entry = cursor.fetchone()
 
             assert db_entry
-            assert db_entry[1] == video_data.channel_title
-            assert db_entry[2] == video_data.channel_id
-            assert db_entry[3] == video_data.video_id
-            assert db_entry[4] == video_data.view_count
-            assert db_entry[5] == video_data.like_count
-            assert db_entry[6] == video_data.comment_count
-            assert db_entry[7] == video_data.filtered_comment_count
+            assert db_entry[1] == db_video_data.channel_title
+            assert db_entry[2] == db_video_data.channel_id
+            assert db_entry[3] == db_video_data.video_id
+            assert db_entry[4] == db_video_data.view_count
+            assert db_entry[5] == db_video_data.like_count
+            assert db_entry[6] == db_video_data.comment_count
+            assert db_entry[7] == db_video_data.filtered_comment_count
 
     @pytest.mark.parametrize('video_data', [test_video_data[0]])
     def test_new_comment_detection(self, astro_db, comment_dataframe, video_data):

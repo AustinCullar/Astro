@@ -4,7 +4,6 @@ Class for managing comment/video database.
 import sqlite3
 
 import pandas as pd
-from src.data_collection.yt_data_api import YouTubeDataAPI
 from src.data_collection.data_structures import VideoData
 
 
@@ -28,7 +27,9 @@ class AstroDB:
         append any new comments to the comment table.
         """
         # pull comments from local database
-        db_dataframe = pd.read_sql(f"SELECT * FROM '{comment_table}'", self.conn)
+        db_dataframe = pd.read_sql(f'SELECT * FROM {comment_table}', self.conn)
+        if db_dataframe is None:
+            raise LookupError(f'Failed to pull data from comment table: {comment_table}')
 
         # check for comments made nonvisible since our last check
         nonvisible_comments = self.__get_nonvisible_comments(old=db_dataframe, new=new_dataframe)
@@ -113,10 +114,9 @@ class AstroDB:
         """
         self.logger.debug('Creating comment table for new video...')
 
-        if not video_data:
-            raise ValueError('NULL video data')
-
-        if not video_data.channel_id or not YouTubeDataAPI.valid_video_id(video_data.video_id):
+        if not video_data or \
+                not video_data.channel_id or \
+                not video_data.video_id:
             raise ValueError('Invalid video data')
 
         if not video_data.channel_title:
@@ -164,14 +164,7 @@ class AstroDB:
         """
         self.logger.debug(f'Searching for comment table for video ID: {video_id}')
 
-        if not YouTubeDataAPI.valid_video_id(video_id):  # don't waste time querying database
-            return ''
-
-        get_comment_table_for_video_id = \
-            f"SELECT comment_table FROM Videos WHERE video_id='{video_id}'"
-
-        self.cursor.execute(get_comment_table_for_video_id)
-
+        self.cursor.execute(f"SELECT comment_table FROM Videos WHERE video_id='{video_id}'")
         table = self.cursor.fetchone()
 
         if table:
@@ -224,21 +217,21 @@ class AstroDB:
         """
         self.logger.debug('Inserting new comment dataframe...')
 
-        if not video_data:
-            raise ValueError('NULL video data')
+        if not video_data or not video_data.video_id:
+            raise ValueError('Invalid video data')
 
-        if not YouTubeDataAPI.valid_video_id(video_data.video_id):
-            raise ValueError('Invalid video id')
+        if dataframe is None:
+            raise ValueError('Cannot insert NULL dataframe')
 
         comment_table = self.__get_comment_table_for(video_data.video_id)
         if comment_table:
-            self.logger.debug('Compare & merge local comment data with new data')
+            self.logger.debug('Merging new comment data with local database...')
             return self.__merge_comment_data(comment_table, dataframe)
         else:
             self.logger.debug(f'Comment table for video id {video_data.video_id} did not exist - creating it now')
             comment_table = self.__create_comment_table_for_video(video_data)
 
-        dataframe.to_sql(comment_table, self.conn, index=False, if_exists='append')
+        dataframe.to_sql(comment_table, self.conn, index=False, if_exists='replace')
 
         self.conn.commit()
 

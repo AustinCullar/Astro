@@ -22,24 +22,7 @@ class YouTubeDataAPI:
         self.log_json = log_json
         self.youtube = build('youtube', 'v3', developerKey=self.api_key)
 
-    @staticmethod
-    def valid_video_id(video_id: str) -> bool:
-        valid_tokens = (string.ascii_uppercase +
-                        string.ascii_lowercase +
-                        string.digits + '-' + '_')
-
-        if video_id:
-            for token in video_id:
-                if token not in valid_tokens:
-                    return False
-
-            # all tokens are valid
-            return True
-
-        # null video_id
-        return False
-
-    def parse_comment_api_response(self, response, comment_dataframe) -> pd.DataFrame:
+    def __parse_comment_api_response(self, response, comment_dataframe) -> pd.DataFrame:
         """
         Parse API response for comment query. This will grab all comments and their replies,
         storing the resulting data in a dataframe.
@@ -85,6 +68,25 @@ class YouTubeDataAPI:
 
         return df, comment_count
 
+    def __extract_video_id_from_url(self, url: str) -> str:
+        """
+        Grab the video ID from the provided URL. The ID will come after
+        the substring 'v=' in the URL, so I just split the string on that
+        substring and return the latter half.
+        """
+        video_id = url.split('v=')[1]
+
+        # validate extracted video id
+        valid_tokens = (string.ascii_uppercase +
+                        string.ascii_lowercase +
+                        string.digits + '-' + '_')
+
+        for token in video_id:
+            if token not in valid_tokens:
+                raise ValueError('Invalid video URL provided')
+
+        return video_id
+
     def get_comments(self, video_data) -> pd.DataFrame:
         """
         Collect and store comment information in a dataframe. Collected
@@ -120,7 +122,7 @@ class YouTubeDataAPI:
                         with self.logger.log_file_only():
                             self.logger.info(json.dumps(response, indent=4))
 
-                    comment_dataframe, comments_added = self.parse_comment_api_response(response, comment_dataframe)
+                    comment_dataframe, comments_added = self.__parse_comment_api_response(response, comment_dataframe)
                     if 'nextPageToken' in response:  # there are more comments to fetch
                         page_token = response['nextPageToken']
                     else:
@@ -141,13 +143,14 @@ class YouTubeDataAPI:
 
         return comment_dataframe
 
-    def get_video_metadata(self, video_id: str) -> VideoData:
+    def get_video_metadata(self, url: str) -> VideoData:
         """
         Collect video information provided a video ID.
         Return all data in a VideoData class for easy access.
         """
         self.logger.debug('Collecting video metadata...')
 
+        video_id = self.__extract_video_id_from_url(url)
         return_data = VideoData()
 
         request = self.youtube.videos().list(

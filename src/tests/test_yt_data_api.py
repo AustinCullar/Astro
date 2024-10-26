@@ -157,7 +157,7 @@ class TestYouTubeDataAPI:
                 viewCount=viewCount,
                 commentCount=commentCount)
 
-        video_data = youtube.get_video_metadata('video_id')
+        video_data = youtube.get_video_metadata('youtube.com/test/v=videoid')
 
         assert video_data.channel_id == channelId
         assert video_data.channel_title == channelTitle
