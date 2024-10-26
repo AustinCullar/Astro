@@ -63,7 +63,7 @@ each comment.
 ## Example
 This output below was generated using a YouTube video URL from user 'hbomberguy'.
 ```
-(astro) rileycullar@Deimos src % python astro.py 'https://www.youtube.com/watch?v=0twDETh6QaI'
+(astro) $ python astro.py 'https://www.youtube.com/watch?v=0twDETh6QaI'
 [10/26/24 11:56:52] INFO                 video_id: 0twDETh6QaI                                                       log.py:119
                     INFO              video_title: ROBLOX_OOF.mp3                                                    log.py:119
                     INFO               channel_id: UClt01z1wHHT7c5lKcU8pxRQ                                          log.py:119
