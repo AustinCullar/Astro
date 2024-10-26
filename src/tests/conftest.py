@@ -10,13 +10,27 @@ from src.log import AstroLogger
 from src.theme import AstroTheme
 
 
-@pytest.fixture(scope='class')
+@pytest.fixture(scope='function')
 def comment_dataframe():
-    df = pd.DataFrame(columns=['comment', 'user', 'date'])
+    df = pd.DataFrame(columns=['comment_id', 'comment', 'user', 'date', 'visible'])
 
-    df.loc[0] = ['hello there', '@user1', '2022-10-23T19:05:89Z']
-    df.loc[1] = ['this is terrible', '@user2', '2023-10-23T20:05:89Z']
-    df.loc[2] = ['this is awesome!', '@user3', '2021-8-23T20:11:90Z']
+    df.loc[0] = ['UgyMLcxXS1Id2SaBuJd4AaABAg',
+                 'hello there',
+                 '@user1',
+                 '2022-10-23T19:05:89Z',
+                 1]
+
+    df.loc[1] = ['UgwJuUmFZtOgkjrCrlp4AaABAg',
+                 'this is terrible',
+                 '@user2',
+                 '2023-10-23T20:05:89Z',
+                 1]
+
+    df.loc[2] = ['UgwJuUmFZtOgkjrCrlp4AaABAg.A9Y4JkqJXpPA9Y4Z0_I_BA',
+                 'this is awesome!',
+                 '@user3',
+                 '2021-8-23T20:11:90Z',
+                 1]
 
     return df
 

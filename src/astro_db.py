@@ -4,7 +4,6 @@ Class for managing comment/video database.
 import sqlite3
 
 import pandas as pd
-from src.data_collection.yt_data_api import YouTubeDataAPI
 from src.data_collection.data_structures import VideoData
 
 
@@ -21,10 +20,35 @@ class AstroDB:
 
         self.logger.debug('Initializing database...')
 
-    def get_db_conn(self):
-        return self.conn
+    def __merge_comment_data(self, comment_table: str, new_dataframe: pd.DataFrame):
+        """
+        Merge new comment data with existing data in local database. This logic
+        will detect hidden comments and update their visibility status and then
+        append any new comments to the comment table.
+        """
+        # pull comments from local database
+        db_dataframe = pd.read_sql(f'SELECT * FROM {comment_table}', self.conn)
+        if db_dataframe is None:
+            raise LookupError(f'Failed to pull data from comment table: {comment_table}')
 
-    def get_next_table_name(self, last_table_name: str) -> str:
+        # check for comments made nonvisible since our last check
+        nonvisible_comments = self.__get_nonvisible_comments(old=db_dataframe, new=new_dataframe)
+        nonvisible_ids = nonvisible_comments['comment_id'].tolist()
+        for nonvisible_id in nonvisible_ids:
+            # update database entry to reflect visible status
+            self.cursor.execute(f"UPDATE {comment_table} SET \
+                    visible=FALSE WHERE comment_id='{nonvisible_id}'")
+
+        self.logger.debug(f'Identified {len(nonvisible_comments.index)} nonvisible comments')
+
+        # check for new comments returned by the API, append to local database
+        new_comments = self.__get_new_comments(old=db_dataframe, new=new_dataframe)
+        self.logger.debug(f'Appending {len(new_comments.index)} new comments to local database')
+        new_comments.to_sql(comment_table, self.conn, index=False, if_exists='append')
+
+        self.conn.commit()
+
+    def __get_next_table_name(self, last_table_name: str) -> str:
         """
         Roll the provided string forward by 'incrementing' the
         letters. See below for some example transitions:
@@ -55,7 +79,7 @@ class AstroDB:
 
         return new_name
 
-    def create_unique_table_name(self) -> str:
+    def __create_unique_table_name(self) -> str:
         """
         This function effectively implements a string odometer. The
         name returned will be a 3 character string consisting of capital
@@ -78,48 +102,28 @@ class AstroDB:
 
         self.logger.debug('last table name: {}'.format(last_table_name))
 
-        new_name = self.get_next_table_name(last_table_name)
+        new_name = self.__get_next_table_name(last_table_name)
 
         self.logger.debug('unique table name: {}'.format(new_name))
 
         return new_name
 
-    def create_videos_table(self):
-        """
-        Create the main table, 'Videos', which will track every video on which
-        data is collected. It will also point to a seperate table in which comment
-        data is stored for that particular video id.
-        """
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS Videos ( \
-            id INTEGER PRIMARY KEY AUTOINCREMENT, \
-            channel_title TEXT, \
-            channel_id TEXT, \
-            video_id TEXT, \
-            views INT, \
-            likes INT, \
-            comment_count INT, \
-            filtered_comment_count INT, \
-            comment_table TEXT)")
-
-        self.conn.commit()
-
-    def create_comment_table_for_video(self, video_data) -> str:
+    def __create_comment_table_for_video(self, video_data) -> str:
         """
         Create a new comment table for a specific video id.
         """
         self.logger.debug('Creating comment table for new video...')
 
-        if not video_data:
-            raise ValueError('NULL video data')
-
-        if not video_data.channel_id or not YouTubeDataAPI.valid_video_id(video_data.video_id):
+        if not video_data or \
+                not video_data.channel_id or \
+                not video_data.video_id:
             raise ValueError('Invalid video data')
 
         if not video_data.channel_title:
             # Missing the channel title is not critical, but should be investigated
             self.logger.warning('Missing channel title')
 
-        table_name = self.create_unique_table_name()
+        table_name = self.__create_unique_table_name()
         assert table_name, "Failed to create unique comment table in database"
 
         query = f"INSERT INTO Videos \
@@ -140,9 +144,11 @@ class AstroDB:
 
         self.cursor.execute("CREATE TABLE {} ( \
             id INTEGER PRIMARY KEY AUTOINCREMENT, \
-            user TEXT, \
+            comment_id TEXT, \
             comment TEXT, \
+            user TEXT, \
             date TEXT, \
+            visible INT, \
             PSentiment, \
             NSentiment)".format(table_name))
 
@@ -152,20 +158,13 @@ class AstroDB:
 
         return table_name
 
-    def get_comment_table_for(self, video_id: str) -> str:
+    def __get_comment_table_for(self, video_id: str) -> str:
         """
         Given a video id, return the associated comment table, if any.
         """
         self.logger.debug(f'Searching for comment table for video ID: {video_id}')
 
-        if not YouTubeDataAPI.valid_video_id(video_id):  # don't waste time querying database
-            return ''
-
-        get_comment_table_for_video_id = \
-            f"SELECT comment_table FROM Videos WHERE video_id='{video_id}'"
-
-        self.cursor.execute(get_comment_table_for_video_id)
-
+        self.cursor.execute(f"SELECT comment_table FROM Videos WHERE video_id='{video_id}'")
         table = self.cursor.fetchone()
 
         if table:
@@ -173,24 +172,66 @@ class AstroDB:
         else:
             return ''
 
+    def __get_nonvisible_comments(self, old=None, new=None) -> pd.DataFrame:
+        """
+        Return a new dataframe containing only rows which are present in `old`
+        but not in `new`. This is used to determine which comments stored in the
+        local database were not returned in the latest API response, indicating
+        that the comment is no longer visible.
+        """
+        return old[~old.comment_id.isin(new.comment_id)]
+
+    def __get_new_comments(self, old=None, new=None) -> pd.DataFrame:
+        """
+        Return a new dataframe ontaining only rows with are present in `new`
+        but not in `old`. This is used to determine which comments in the API
+        response are not currently stored in the local database.
+        """
+        return new[~new.comment_id.isin(old.comment_id)]
+
+    def get_db_conn(self):
+        return self.conn
+
+    def create_videos_table(self):
+        """
+        Create the main table, 'Videos', which will track every video on which
+        data is collected. It will also point to a seperate table in which comment
+        data is stored for that particular video id.
+        """
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS Videos ( \
+            id INTEGER PRIMARY KEY AUTOINCREMENT, \
+            channel_title TEXT, \
+            channel_id TEXT, \
+            video_id TEXT, \
+            views INT, \
+            likes INT, \
+            comment_count INT, \
+            filtered_comment_count INT, \
+            comment_table TEXT)")
+
+        self.conn.commit()
+
     def insert_comment_dataframe(self, video_data, dataframe: pd.DataFrame):
         """
         Given a video ID and a dataframe, commit the dataframe to the database.
         """
         self.logger.debug('Inserting new comment dataframe...')
 
-        if not video_data:
-            raise ValueError('NULL video data')
+        if not video_data or not video_data.video_id:
+            raise ValueError('Invalid video data')
 
-        if not YouTubeDataAPI.valid_video_id(video_data.video_id):
-            raise ValueError('Invalid video id')
+        if dataframe is None:
+            raise ValueError('Cannot insert NULL dataframe')
 
-        comment_table = self.get_comment_table_for(video_data.video_id)
-        if not comment_table:
+        comment_table = self.__get_comment_table_for(video_data.video_id)
+        if comment_table:
+            self.logger.debug('Merging new comment data with local database...')
+            return self.__merge_comment_data(comment_table, dataframe)
+        else:
             self.logger.debug(f'Comment table for video id {video_data.video_id} did not exist - creating it now')
-            comment_table = self.create_comment_table_for_video(video_data)
+            comment_table = self.__create_comment_table_for_video(video_data)
 
-        dataframe.to_sql(comment_table, self.conn, index=False, if_exists='append')
+        dataframe.to_sql(comment_table, self.conn, index=False, if_exists='replace')
 
         self.conn.commit()
 
@@ -214,8 +255,8 @@ class AstroDB:
                 channel_title=db_record[1],
                 channel_id=db_record[2],
                 video_id=db_record[3],
-                like_count=db_record[4],
-                view_count=db_record[5],
+                view_count=db_record[4],
+                like_count=db_record[5],
                 comment_count=db_record[6],
                 filtered_comment_count=db_record[7])
 
@@ -228,8 +269,8 @@ class AstroDB:
         self.logger.debug('Updating video metadata...')
 
         self.cursor.execute(f"UPDATE Videos SET \
-                comment_count=comment_count+{video_data.comment_count}, \
-                filtered_comment_count=filtered_comment_count+{video_data.filtered_comment_count}, \
+                comment_count={video_data.comment_count}, \
+                filtered_comment_count={video_data.filtered_comment_count}, \
                 likes={video_data.like_count}, \
                 views={video_data.view_count} \
                 WHERE video_id='{video_data.video_id}'")
