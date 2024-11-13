@@ -7,6 +7,7 @@ import string
 import json
 
 from src.data_collection.data_structures import VideoData
+from src.dataframe import CommentDataFrame
 from googleapiclient.discovery import build
 
 
@@ -22,22 +23,13 @@ class YouTubeDataAPI:
         self.log_json = log_json
         self.youtube = build('youtube', 'v3', developerKey=self.api_key)
 
-    def __parse_comment_api_response(self, response, comment_dataframe) -> pd.DataFrame:
+    def __parse_comment_api_response(self, response: str, comment_df: CommentDataFrame) -> CommentDataFrame:
         """
         Parse API response for comment query. This will grab all comments and their replies,
         storing the resulting data in a dataframe.
         """
-        # if the dataframe is non-null and not empty, we're appending data to the dataframe
-        append_dataframe = comment_dataframe is not None and not comment_dataframe.empty
-
-        comment_count = 0
-
-        if append_dataframe:
-            df_index = len(comment_dataframe.index)  # last index in dataframe
-            df = comment_dataframe
-        else:  # create new dataframe
-            df_index = 0
-            df = pd.DataFrame(columns=['comment_id', 'comment', 'user', 'date', 'visible'])
+        if not comment_df:
+            comment_df = CommentDataFrame()
 
         for item in response['items']:
             has_replies = 0 != item['snippet']['totalReplyCount']
@@ -47,11 +39,8 @@ class YouTubeDataAPI:
             comment = comment_info['textDisplay']
             user = comment_info['authorDisplayName']
             date = comment_info['publishedAt']
-            visible = True  # this is used to track comment visibility changes
 
-            df.loc[df_index] = [comment_id, comment, user, date, visible]
-            df_index += 1
-            comment_count += 1
+            comment_df.add_comment(comment_id, comment, user, date)
 
             if has_replies:
                 for reply in item['replies']['comments']:
@@ -62,11 +51,9 @@ class YouTubeDataAPI:
                     user = reply_data['authorDisplayName']
                     date = reply_data['publishedAt']
 
-                    df.loc[df_index] = [comment_id, comment, user, date, visible]
-                    df_index += 1
-                    comment_count += 1
+                    comment_df.add_comment(comment_id, comment, user, date)
 
-        return df, comment_count
+        return comment_df
 
     def __extract_video_id_from_url(self, url: str) -> str:
         """
@@ -87,7 +74,7 @@ class YouTubeDataAPI:
 
         return video_id
 
-    def get_comments(self, video_data) -> pd.DataFrame:
+    def get_comments(self, video_data):
         """
         Collect and store comment information in a dataframe. Collected
         info includes:
@@ -122,21 +109,21 @@ class YouTubeDataAPI:
                         with self.logger.log_file_only():
                             self.logger.info(json.dumps(response, indent=4))
 
-                    comment_dataframe, comments_added = self.__parse_comment_api_response(response, comment_dataframe)
+                    comment_dataframe = self.__parse_comment_api_response(response, comment_dataframe)
                     if 'nextPageToken' in response:  # there are more comments to fetch
                         page_token = response['nextPageToken']
                     else:
                         self.logger.debug("Comment collection complete")
                         unfetched_comments = False
 
-                    progress.advance(comments_added)
+                    progress.set_completed(comment_dataframe.row_count())
 
                 except Exception as e:
                     self.logger.error(str(e))
                     self.logger.error(traceback.format_exc())
 
             # get filtered comment count by subtracting our collected count from our expected count
-            filtered_comments = video_data.comment_count - len(comment_dataframe.index)
+            filtered_comments = video_data.comment_count - comment_dataframe.row_count()
             if 0 < filtered_comments:
                 video_data.filtered_comment_count = filtered_comments
             progress.complete()

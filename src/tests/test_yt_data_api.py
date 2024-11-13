@@ -112,7 +112,7 @@ class TestYouTubeDataAPI:
 
         df = youtube.get_comments(video_data)
 
-        assert not df.empty
+        assert not df.empty()
 
         """
         The test data will only create 2 rows in the dataframe:

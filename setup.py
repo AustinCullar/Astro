@@ -11,7 +11,8 @@ setup(
         "src/log",
         "src/astro_db",
         "src/progress",
-        "src/theme"],
+        "src/theme",
+        "src/dataframe"],
 
     # Packages required to run the app
     install_requires=[

@@ -118,16 +118,15 @@ class AstroLogger(logging.Logger):
             if attr not in exclude_fields:
                 self.info(f'{attr:>20}: {str(value)}')
 
-    def print_dataframe(self, df, title=''):
+    def print_dataframe(self, comment_df, title='', max_rows=20):
         """
         Print the provided dataframe in rich.Table format.
         """
         max_comment_len = 30
-        max_rows = 20
         row_count = 0
 
         # ensure dataframe contains only string values
-        df = df.astype(str)
+        df = comment_df.dataframe.astype(str)
 
         table = self.__rich_table(title)
 

@@ -6,11 +6,12 @@ from unittest.mock import MagicMock
 
 # Astro modules
 from src.astro_db import AstroDB
+from src.dataframe import CommentDataFrame
 from src.tests.test_objects import test_video_data
 from src.tests.astro_mocks import MockSqlite3Connection
 
 
-@pytest.fixture(scope='class')
+@pytest.fixture(scope='function')
 def astro_db(logger):
     test_db_file = 'test.db'
     db = AstroDB(logger, test_db_file)
@@ -155,22 +156,18 @@ class TestAstroDB:
 
             comment_table = comment_table[0]
 
-            # grab all rows from coment tables
+            # grab all rows from coment table
             query = f"SELECT * FROM {comment_table}"
             cursor.execute(query)
             comment_data = cursor.fetchall()
 
             # verify that the data in the table matches that in the dataframe
-            index = 0
-            for row in comment_data:
-                assert row[0] == index+1
-                assert row[1] == comment_dataframe.loc[index]['comment_id']
-                assert row[2] == comment_dataframe.loc[index]['comment']
-                assert row[3] == comment_dataframe.loc[index]['user']
-                assert row[4] == comment_dataframe.loc[index]['date']
-                assert row[5] == comment_dataframe.loc[index]['visible']
-
-                index += 1
+            for (db_row, (_, dataframe_row)) in zip(comment_data, comment_dataframe.iterrows()):
+                assert db_row[0] == dataframe_row['comment_id']
+                assert db_row[1] == dataframe_row['comment']
+                assert db_row[2] == dataframe_row['user']
+                assert db_row[3] == dataframe_row['date']
+                assert db_row[4] == dataframe_row['visible']
 
     @pytest.mark.parametrize('video_data', [video_data for video_data in test_video_data if video_data])
     def test_get_video_data(self, astro_db, video_data):
@@ -182,6 +179,7 @@ class TestAstroDB:
                 db_video_data = astro_db.get_video_data(video_data.video_id)
                 assert str(exception.value) == 'Invalid video id'
         else:
+            astro_db._AstroDB__create_comment_table_for_video(video_data)
             db_video_data = astro_db.get_video_data(video_data.video_id)
 
             cursor.execute(f"SELECT * from Videos WHERE video_id='{video_data.video_id}'")
@@ -209,14 +207,12 @@ class TestAstroDB:
         orig_comment_count = self.__get_table_row_count(conn, comment_table)
 
         # append 2 new dummy comments to dataframe
-        comment_data1 = ['id1', 'comment1', 'test_user', '10.25.2024', 1]
-        comment_data2 = ['id2', 'comment2', 'test_user', '10.26.2024', 1]
-        index = len(comment_dataframe.index)
-        comment_dataframe.loc[index] = comment_data1
-        comment_dataframe.loc[index+1] = comment_data2
+        comment_dataframe2 = CommentDataFrame()
+        comment_dataframe2.add_comment('id1', 'comment1', 'test_user', '10.25.2024')
+        comment_dataframe2.add_comment('id2', 'comment2', 'test_user', '10.26.2024')
 
         # insert dataframe
-        astro_db.insert_comment_dataframe(video_data, comment_dataframe)
+        astro_db.insert_comment_dataframe(video_data, comment_dataframe2)
         new_comment_count = self.__get_table_row_count(conn, comment_table)
 
         # verify new comments were added
@@ -224,8 +220,9 @@ class TestAstroDB:
         comment_ids = cursor.fetchall()
 
         assert len(comment_ids) == 2  # make sure we added 2 new comments
-        assert comment_ids[0][0] == comment_data1[0]
-        assert comment_ids[1][0] == comment_data2[0]
+        for (comment_id, (_, df_row)) in zip(comment_ids, comment_dataframe2.iterrows()):
+            assert comment_id[0] == df_row['comment_id']
+
         assert new_comment_count == orig_comment_count+2
 
     @pytest.mark.parametrize('video_data', [test_video_data[0]])
@@ -241,8 +238,8 @@ class TestAstroDB:
         assert comment_table
 
         # insert same dataframe, but with last row dropped
-        dropped_comment_id = comment_dataframe.loc[len(comment_dataframe.index)-1]['comment_id']
-        comment_dataframe.drop(len(comment_dataframe.index)-1, inplace=True)
+        dropped_comment_id = comment_dataframe.get_column_values(column='comment_id')[-1]
+        comment_dataframe.drop(comment_dataframe.row_count()-1)
         astro_db.insert_comment_dataframe(video_data, comment_dataframe)
 
         # verify that the comment's visibility was changed in the table

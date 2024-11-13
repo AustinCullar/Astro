@@ -13,20 +13,19 @@ nonsense_string = 'asdf gra asdg vrs sdg'
 empty_string = ''
 
 
-def verify_sentiment(sentiment):
-    assert sentiment <= 1.0 and sentiment >= 0.0
-
-
 class TestSentimentAnalysis:
+
+    def __verify_sentiment(self, sentiment):
+        assert sentiment <= 1.0 and sentiment >= 0.0
 
     def test_add_sentiment_to_dataframe(self, logger, comment_dataframe):
         sa = SentimentAnalysis(logger)
 
         sa.add_sentiment_to_dataframe(comment_dataframe)
 
-        for index, row in comment_dataframe.iterrows():
-            verify_sentiment(row['PSentiment'])
-            verify_sentiment(row['NSentiment'])
+        for _, row in comment_dataframe.iterrows():
+            self.__verify_sentiment(row['PSentiment'])
+            self.__verify_sentiment(row['NSentiment'])
 
     @pytest.mark.parametrize('text',
                              [positive_string,
@@ -40,6 +39,6 @@ class TestSentimentAnalysis:
         sentiment = sa.get_sentiment(text)
 
         # verify that some sentiment data is returned
-        verify_sentiment(sentiment[0])
-        verify_sentiment(sentiment[1])
-        verify_sentiment(sentiment[2])
+        self.__verify_sentiment(sentiment[0])
+        self.__verify_sentiment(sentiment[1])
+        self.__verify_sentiment(sentiment[2])

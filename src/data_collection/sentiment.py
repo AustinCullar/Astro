@@ -5,7 +5,7 @@ approach utilizes the Natural Language Toolkit in combination with SentiWordNet.
 import nltk
 from nltk.corpus import wordnet as wn
 from nltk.corpus import sentiwordnet as swn
-
+import pandas as pd
 
 class SentimentAnalysis:
     logger = None
@@ -25,22 +25,18 @@ class SentimentAnalysis:
             nltk.download(pkg, quiet=True, raise_on_error=True)
 
     def add_sentiment_to_dataframe(self, df):
-        if df is None or df.empty:
+        if not df:
             raise ValueError('received null dataframe')
 
-        # add new columns to dataframe
-        df['PSentiment'] = ''
-        df['NSentiment'] = ''
+        # function to apply to each dataframe row in the subsequent call to `apply()`
+        def calculate_sentiment(row):
+            sentiment = self.get_sentiment(row['comment'])
+            return pd.Series({
+                'PSentiment': sentiment[0],
+                'NSentiment': sentiment[1]})
 
-        comment_count = len(df.index)
-        with self.logger.progress_bar('Calculating comment sentiment',
-                                      comment_count) as progress:
-            for index, row in df.iterrows():
-                sentiment = self.get_sentiment(row['comment'])
-                df.loc[index, 'PSentiment'] = sentiment[0]
-                df.loc[index, 'NSentiment'] = sentiment[1]
-
-                progress.advance(1)
+        # add sentiment values to each row
+        df.apply(calculate_sentiment, columns=['PSentiment', 'NSentiment'])
 
     def get_sentiment(self, comment: str) -> ():
         token_comment = nltk.word_tokenize(comment)

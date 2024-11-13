@@ -4,6 +4,7 @@ Class for managing comment/video database.
 import sqlite3
 
 import pandas as pd
+from src.dataframe import read_comments_sql
 from src.data_collection.data_structures import VideoData
 
 
@@ -20,31 +21,41 @@ class AstroDB:
 
         self.logger.debug('Initializing database...')
 
-    def __merge_comment_data(self, comment_table: str, new_dataframe: pd.DataFrame):
+    def __merge_comment_data(self, comment_table: str, new_dataframe):
         """
         Merge new comment data with existing data in local database. This logic
         will detect hidden comments and update their visibility status and then
         append any new comments to the comment table.
         """
         # pull comments from local database
-        db_dataframe = pd.read_sql(f'SELECT * FROM {comment_table}', self.conn)
+        db_dataframe = read_comments_sql(f'SELECT * FROM {comment_table}', self.conn)
         if db_dataframe is None:
             raise LookupError(f'Failed to pull data from comment table: {comment_table}')
 
-        # check for comments made nonvisible since our last check
-        nonvisible_comments = self.__get_nonvisible_comments(old=db_dataframe, new=new_dataframe)
-        nonvisible_ids = nonvisible_comments['comment_id'].tolist()
-        for nonvisible_id in nonvisible_ids:
-            # update database entry to reflect visible status
-            self.cursor.execute(f"UPDATE {comment_table} SET \
-                    visible=FALSE WHERE comment_id='{nonvisible_id}'")
+        # identify new comments as those present in the new dataframe, but not in the database dataframe
+        new_comments = new_dataframe.not_in(db_dataframe)
 
-        self.logger.debug(f'Identified {len(nonvisible_comments.index)} nonvisible comments')
+        # identify nonvisible comments as those present in the database dataframe, but not in the new dataframe
+        nonvisible_comments = db_dataframe.not_in(new_dataframe)
+
+        if nonvisible_comments:
+            self.logger.debug(f'Identified {nonvisible_comments.row_count()} nonvisible comments')
+
+            # get comment ids of nonvisible comments
+            nonvisible_ids = nonvisible_comments.get_column_values('comment_id')
+
+            # update visibility value in local database
+            for nonvisible_id in nonvisible_ids:
+                # update database entry to reflect visible status
+                self.cursor.execute(f"UPDATE {comment_table} SET \
+                        visible=FALSE WHERE comment_id='{nonvisible_id}'")
 
         # check for new comments returned by the API, append to local database
-        new_comments = self.__get_new_comments(old=db_dataframe, new=new_dataframe)
-        self.logger.debug(f'Appending {len(new_comments.index)} new comments to local database')
-        new_comments.to_sql(comment_table, self.conn, index=False, if_exists='append')
+        if new_comments:
+            self.logger.info(f'Appending {new_comments.row_count()} new comments to local database')
+            new_comments.to_sql(comment_table, self.conn, if_exists='append')
+        else:
+            self.logger.info(f'No new comments detected; local database is current')
 
         self.conn.commit()
 
@@ -211,7 +222,7 @@ class AstroDB:
 
         self.conn.commit()
 
-    def insert_comment_dataframe(self, video_data, dataframe: pd.DataFrame):
+    def insert_comment_dataframe(self, video_data, dataframe):
         """
         Given a video ID and a dataframe, commit the dataframe to the database.
         """
@@ -231,7 +242,7 @@ class AstroDB:
             self.logger.debug(f'Comment table for video id {video_data.video_id} did not exist - creating it now')
             comment_table = self.__create_comment_table_for_video(video_data)
 
-        dataframe.to_sql(comment_table, self.conn, index=False, if_exists='replace')
+        dataframe.to_sql(comment_table, self.conn, if_exists='replace')
 
         self.conn.commit()
 
